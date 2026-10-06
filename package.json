@@ -1,6 +1,6 @@
 {
   "name": "starcraft-ladder-live-assistant",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "private": true,
   "description": "独立星际2天梯直播助手：录像战绩、MMR、OBS画面与信息栏",
   "scripts": {

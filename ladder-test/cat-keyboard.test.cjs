@@ -43,7 +43,7 @@ test('rear style has exactly one live keyboard, a distinct three-state side-prof
   const png=fs.readFileSync(path.join(__dirname,'../public/assets/cat-keyboard-rear-v1.png'));assert.equal(png[25],6);assert.equal(png.readUInt32BE(16),png.readUInt32BE(20)*3);assert.match(fs.readFileSync(path.join(__dirname,'../public/cat-keyboard.css'),'utf8'),/rotateZ\(-30deg\)/);
 });
 test('native reader has chat guard, does not intercept input and exits when its parent is gone',()=>{
-  const python=path.join(__dirname,'../runtime/python/python.exe'),script=path.join(__dirname,'../capture-keyboard.py');
+  const python=require('../runtime-paths.cjs').python(),script=path.join(__dirname,'../capture-keyboard.py');
   const code="import importlib.util; s=importlib.util.spec_from_file_location('capture',r'"+script+"'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m); g=m.ChatGuard(); assert g.update(True,True); assert g.update(True,True); g.update(True,False); assert not g.update(True,True); g.update(True,False); assert g.update(True,True); assert not g.update(True,False,True); assert not m.ChatGuard(False).update(True,True); print('chat guard OK')";
   assert.match(execFileSync(python,['-X','utf8','-c',code],{encoding:'utf8'}),/chat guard OK/);
   const frame=JSON.parse(execFileSync(python,['-X','utf8',script,'--once'],{encoding:'utf8'}));assert.ok(['waiting','active','chat'].includes(frame.status));if(frame.status!=='active')assert.deepEqual(frame.pressed,[]);

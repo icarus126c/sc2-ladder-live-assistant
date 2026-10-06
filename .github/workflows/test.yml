@@ -14,10 +14,4 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install -r requirements.txt
-      - name: Provide runtime paths for portable launcher tests
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force runtime | Out-Null
-          Copy-Item (Get-Command node).Source runtime/node.exe
-          New-Item -ItemType Junction -Path runtime/python -Target $env:pythonLocation | Out-Null
       - run: npm test
