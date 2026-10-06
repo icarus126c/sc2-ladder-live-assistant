@@ -1,0 +1,5 @@
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent}#canvas{width:1920px;height:1080px;position:absolute;transform-origin:0 0;font-family:"Microsoft YaHei",sans-serif}#previewGround{display:none;position:absolute;inset:0;background:radial-gradient(ellipse at center,#243449,#0d1521);color:#738398;align-items:center;justify-content:center;font-size:30px}body.preview #previewGround{display:flex}#breakScreen{position:absolute;inset:0;background:#08121f;color:#f0f5fb;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:48px}#breakScreen[hidden]{display:none}.waiting-inner{padding:65px}.hud-foot{flex-wrap:wrap}#hudMatchups{font-size:.68em;opacity:.8;margin-top:12px}#waitingMatchups{margin-top:25px;font-size:28px;color:#8daac4}
+
+body.preview{background:#111b22}
+
+body.preview #previewGround{background:repeating-conic-gradient(#182631 0% 25%,#1e2e3b 0% 50%) 50% / 64px 64px;color:#8a9aa6}

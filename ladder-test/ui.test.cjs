@@ -1,0 +1,25 @@
+const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const {createReplayStore}=require('../ladder-replays.cjs');
+test('live preview keyboard and replay switches are independent and sync with their tool pages',async()=>{
+ const nodes=new Map();function node(id){if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',checked:false,style:{},classList:{toggle(){}},addEventListener(type,fn){this[type]=fn;},replaceChildren(){},append(){},setAttribute(){},className:''});return nodes.get(id);}
+ const state={config:{sc2AutoMode:'ladder',sc2StartDelay:1,sc2EndDelay:8,obsMapping:{}},scene:'game',ladder:createReplayStore().snapshot(),automation:{},replays:{busy:false,message:'ready',errors:[],recent:[]},keyboard:{status:'waiting'}};
+ Object.assign(state.ladder.config,{enabled:true,catEnabled:true,autoTrack:true});let events;const submitted=[];
+ const win={};win.Workspace={render:s=>win.CatWorkspace.render(s),connection:b=>win.CatWorkspace.connection(b)};
+ const context=vm.createContext({window:win,document:{getElementById:node,querySelector:selector=>selector.startsWith('meta')?{content:'token'}:null,querySelectorAll:()=>[],createElement:()=>node('new')},ObsConnection:class{constructor(){this.ready=false;}},EventSource:class{constructor(){events=this;}},fetch:async(_url,options)=>{const request=JSON.parse(options.body);submitted.push(request.config);Object.assign(state.ladder.config,request.config);state.keyboard.status=state.ladder.config.catEnabled?'waiting':'disabled';return{ok:true,json:async()=>state};},location:{origin:'http://127.0.0.1:17864',hash:'#console'},console,setTimeout:()=>0,clearTimeout(){},setInterval:()=>0,clearInterval(){},addEventListener(){},URL,Blob});
+ for(const file of ['ladder-ui.js','cat-workspace.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+file),'utf8'),context);
+ events.onopen();events.onmessage({data:JSON.stringify(state)});
+ assert.equal(node('previewCatEnabled').checked,true);assert.equal(node('previewReplayEnabled').checked,true);
+ node('previewReplayEnabled').checked=false;await node('previewReplayEnabled').change();assert.deepEqual(submitted.at(-1),{autoTrack:false});assert.equal(state.ladder.config.catEnabled,true);assert.equal(node('autoTrack').checked,false);
+ node('previewCatEnabled').checked=false;await node('previewCatEnabled').change();assert.deepEqual(submitted.at(-1),{catEnabled:false});assert.equal(state.ladder.config.autoTrack,false);assert.equal(node('homeCatEnabled').checked,false);assert.equal(node('catEnabled').checked,false);
+ node('autoTrack').checked=true;await node('autoTrack').change();assert.equal(node('previewReplayEnabled').checked,true);assert.equal(node('previewCatEnabled').checked,false);
+ node('homeCatEnabled').checked=true;await node('homeCatEnabled').change();assert.equal(node('previewCatEnabled').checked,true);assert.equal(state.ladder.config.autoTrack,true);
+});
+test('control UI renders parser status and submits the full account identity',async()=>{
+  const nodes=new Map();function node(id){if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',checked:false,style:{},classList:{toggle(){}},addEventListener(type,fn){this[type]=fn;},replaceChildren(){},append(){},setAttribute(){},className:''});return nodes.get(id);}
+  const state={config:{sc2AutoMode:'ladder',sc2StartDelay:1,sc2EndDelay:8,obsMapping:{}},scene:'intermission',ladder:createReplayStore().snapshot(),automation:{},replays:{busy:false,message:'已跳过旁观录像',errors:[],recent:[]}};
+  state.ladder.config.toonHandle='5-S2-1-9';state.ladder.config.replayDirectory='C:\\中文目录';state.ladder.config.mmr=4000;state.ladder.config.mmrSource='replay';state.ladder.config.mmrAt=Date.parse('2026-10-04T12:00:00Z');state.ladder.config.mmrUpdatedAt=Date.parse('2026-10-05T12:00:00Z');let events,submitted;
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/ladder-ui.js'),'utf8'),{document:{getElementById:node,querySelector:()=>({content:'token'}),querySelectorAll:()=>[],createElement:()=>node('new')},ObsConnection:class{constructor(){this.ready=false;}},EventSource:class{constructor(){events=this;}},fetch:async(_url,options)=>{submitted=JSON.parse(options.body);return{ok:true,json:async()=>state};},location:{origin:'http://127.0.0.1:17864'},console,setTimeout:()=>0,clearTimeout(){},URL,Blob});
+  events.onopen();events.onmessage({data:JSON.stringify(state)});assert.equal(node('toonHandle').value,'5-S2-1-9');assert.equal(node('replayDirectory').value,'C:\\中文目录');assert.equal(node('replayStatus').textContent,'已跳过旁观录像');assert.match(node('mmrTime').textContent,/录像结束.*2026\/10\/4.*录像值/);
+  node('toonHandle').value='5-S2-1-123';await node('identityForm').submit({preventDefault(){}});assert.equal(submitted.config.toonHandle,'5-S2-1-123');
+  node('mmrMode').value='estimate';await node('mmrMode').change();assert.equal(submitted.config.mmrMode,'estimate');
+});

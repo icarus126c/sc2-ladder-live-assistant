@@ -1,0 +1,11 @@
+{
+  "format": "sc2-style-pack",
+  "version": 1,
+  "id": "dusk-violet-demo",
+  "name": "暮色紫 · 配色示例",
+  "note": "仅演示可安装的统一配色，沿用星际基础风格，不包含新角色图片。",
+  "base": "starcraft",
+  "palette": {"dark":"#171325","mid":"#403461","accent":"#d6b3ed","text":"#f4effa"},
+  "templates": {"score":"compact","hud":"compact"},
+  "assets": {}
+}

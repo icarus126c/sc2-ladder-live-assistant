@@ -1,0 +1,14 @@
+runtime/
+.runtime/
+node_modules/
+.ladder-data/
+work/
+outputs/
+release/
+__pycache__/
+*.pyc
+*.SC2Replay
+.env
+.env.*
+*.log
+*.zip

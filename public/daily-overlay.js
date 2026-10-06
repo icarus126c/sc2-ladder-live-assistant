@@ -1,0 +1,10 @@
+(()=>{const box=document.getElementById('dailyWidget');if(!box)return;
+ function render(state,{sample=false,reveal=false}={}){const c=state.ladder.config,l=sample?{...state.ladder,...window.DailyModel.demo,config:c}:state.ladder;const rows=window.DailyModel.rows(l),show={intermission:c.dailyWaiting,game:c.dailyGame,break:c.dailyBreak}[state.scene];box.hidden=!c.enabled||!c.dailyEnabled||(!show&&!reveal)||!rows.length;
+  box.className='daily-widget '+c.dailyStyle;box.style.setProperty('--daily-accent',c.dailyFollowTheme?c.gameFrameAccent:c.dailyAccent);box.style.setProperty('--daily-opacity',c.dailyOpacity/100);Object.assign(box.style,{left:c.dailyX+'px',top:c.dailyY+'px',width:c.dailyWidth+'px',transform:'scale('+c.dailyScale/100+')'});
+  document.getElementById('dailyHeading').textContent=(c.dailyTitle||'今日小战报')+(sample?' · 示例':'');document.getElementById('dailyDate').textContent=sample?'仅预览':l.date;
+  const list=document.getElementById('dailyRows');list.replaceChildren();for(const r of rows){const row=document.createElement('div');row.className='daily-row';for(const [tag,text]of [['span',r.title],['b',r.value],['small',r.detail]]){const e=document.createElement(tag);e.textContent=text;row.append(e);}list.append(row);}
+  const d=l.stats.daily;document.getElementById('dailyFoot').textContent=sample?'示例数据，不写入战绩':d?.replayCount?'今日 '+d.replayCount+' 盘录像'+(d.manualCount?' · 未关联补记不含单位统计':''):'完成对局并保存录像后更新';
+ }
+ window.DailyOverlay={render};
+ if(document.body.dataset.dailySource==='true'){const params=new URLSearchParams(location.search);function resize(){document.getElementById('canvas').style.transform='scale('+Math.min(innerWidth/1920,innerHeight/1080)+')';}resize();addEventListener('resize',resize);const e=new EventSource('/api/events?role=output');e.onmessage=x=>{const s=JSON.parse(x.data);if(['game','intermission','break'].includes(params.get('phase')))s.scene=params.get('phase');render(s);};}
+})();

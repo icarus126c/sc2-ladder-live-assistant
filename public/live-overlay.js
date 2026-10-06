@@ -1,0 +1,25 @@
+(()=>{
+ const $=id=>document.getElementById(id),gift=$('liveGift'),raffle=$('liveRaffle'),income=$('liveIncome');if(!gift||!raffle||!income)return;
+ let saved=null,active=null,queue=[],seen=new Set(),offset=0,draft={},demoRaffle=null,demoUntil=0,room='';
+ const fields=new Set(['giftEnabled','raffleEnabled','incomeEnabled','followTheme','accent','giftX','giftY','giftWidth','giftSeconds','raffleX','raffleY','raffleWidth']);
+ function render(state,{configDraft={}}={}){if(!state.interaction)return;saved=state;draft=configDraft;offset=(state.serverNow||Date.now())-Date.now();const c={...state.interaction.config,...draft};if(room!==c.roomId){room=c.roomId;active=null;queue=[];seen=new Set();demoRaffle=null;}const blocked=new Set(state.interaction.gifts.filter(g=>g.excluded||g.retracted).map(g=>g.id));queue=queue.filter(g=>!blocked.has(g.id));for(const g of [...state.interaction.gifts].reverse()){const id=g.roomId+':'+g.id;if(seen.has(id))continue;seen.add(id);if(!g.excluded&&!g.retracted&&c.giftEnabled&&Date.now()+offset-g.receivedAt<20000)queue.push({...g});}if(seen.size>1000)seen=new Set([...seen].slice(-500));if(queue.length>20)queue=queue.slice(-20);if(active&&blocked.has(active.id))active=null;draw();}
+ function draw(){if(!saved)return;if(saved.scene==='blank'){for(const e of [gift,raffle,income])e.hidden=true;return;}const i=saved.interaction,c={...i.config,...draft},t=Date.now()+offset,accent=c.followTheme?(saved.ladder?.config.gameFrameAccent||c.accent):c.accent;
+  if(active&&t>=active.until)active=null;if(!c.giftEnabled){active=null;queue=[];}if(!active&&queue.length)active={...queue.shift(),until:t+c.giftSeconds*1000};
+  for(const e of [gift,raffle,income])e.style.setProperty('--live-accent',accent);
+  Object.assign(gift.style,{left:c.giftX+'px',top:c.giftY+'px',width:c.giftWidth+'px'});gift.hidden=!c.giftEnabled||!active;
+  if(active){gift.classList.toggle('live-is-demo',active.demo===true);$('liveGiftName').textContent=active.userName;$('liveGiftTitle').textContent=active.gift;$('liveGiftQuantity').textContent='× '+active.quantity;$('liveGiftDetail').textContent=active.type==='superchat'?active.message:active.paid?'谢谢支持！':'谢谢陪伴！';}
+  if(demoRaffle&&t>=demoUntil)demoRaffle=null;const r=demoRaffle||i.raffle;
+  Object.assign(raffle.style,{left:c.raffleX+'px',top:c.raffleY+'px',width:c.raffleWidth+'px'});raffle.hidden=!c.raffleEnabled||!r||r.status==='cancelled'||(r.status==='drawn'&&t-r.drawnAt>20000);
+  if(r){raffle.classList.toggle('live-is-demo',!!demoRaffle);$('liveOverlayPrize').textContent=r.title;$('liveOverlayRaffleLabel').textContent=r.status==='drawn'?'恭喜中奖':'直播间抽奖';$('liveOverlayKeyword').textContent=r.status==='drawn'?'谢谢大家参与！':'发送弹幕「'+r.keyword+'」参与';$('liveOverlayCount').textContent=r.count+' 人报名 · '+r.winnerCount+' 名中奖';const seconds=Math.max(0,Math.ceil((r.deadline-t)/1000));$('liveOverlayTime').textContent=r.status==='collecting'&&seconds>0?'剩余 '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0'):r.status==='drawn'?'已开奖':'等待开奖';$('liveOverlayWinners').textContent=(r.winners||[]).map(w=>w.name).join('、');}
+  income.hidden=!c.incomeEnabled;Object.assign(income.style,{left:c.giftX+'px',top:Math.min(990,c.giftY+125)+'px'});$('liveOverlayIncome').textContent='¥ '+(i.summary.paidMilli/1000).toFixed(2);
+ }
+ window.LiveInteractionOverlay={render};setInterval(draw,200);
+ if(document.body.dataset.liveSource==='true'){
+  const params=new URLSearchParams(location.search),preview=params.get('preview')==='1';let configDraft={};if(preview)document.body.classList.add('preview');
+  function resize(){const scale=Math.min(innerWidth/1920,innerHeight/1080),canvas=$('canvas');canvas.style.transform=`scale(${scale})`;if(preview){canvas.style.left=(innerWidth-1920*scale)/2+'px';canvas.style.top=(innerHeight-1080*scale)/2+'px';}}resize();addEventListener('resize',resize);
+  if(preview)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;if(event.data?.type==='liveDraft'){configDraft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([k,v])=>fields.has(k)&&(typeof v==='boolean'||typeof v==='number'&&Number.isFinite(v)||k==='accent'&&/^#[a-f\d]{6}$/i.test(v))));if(saved)render(saved,{configDraft});}
+   if(event.data?.type==='liveDemo'&&saved){const t=Date.now()+offset;if(event.data.kind==='gift'){queue.push({id:'demo-'+Date.now(),userName:'示例观众',gift:'小电视飞船',quantity:1,type:'gift',paid:true,demo:true});active=null;}else if(event.data.kind==='raffle'){demoRaffle={title:'示例奖品 · 星际头像',keyword:'冲分加油',winnerCount:1,count:8,status:'drawn',drawnAt:t,deadline:t,winners:[{name:'示例中奖观众'}]};demoUntil=t+10000;}draw();}
+  });
+  const events=new EventSource('/api/events?role='+(preview?'preview':'output'));events.onmessage=e=>render(JSON.parse(e.data),{configDraft});
+ }
+})();

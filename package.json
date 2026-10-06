@@ -1,0 +1,15 @@
+{
+  "name": "starcraft-ladder-live-assistant",
+  "version": "2.2.0",
+  "private": true,
+  "description": "独立星际2天梯直播助手：录像战绩、MMR、OBS画面与信息栏",
+  "scripts": {
+    "start": "node ladder-server.cjs",
+    "test": "node --test ladder-test/*.test.cjs",
+    "test:ladder": "node --test ladder-test/*.test.cjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "license": "MIT"
+}
