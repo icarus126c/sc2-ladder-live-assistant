@@ -5,7 +5,8 @@
     const c=state.ladder.config,s=state.ladder.session?.stats||state.ladder.stats;
     widget.hidden=!preview&&(state.scene==='blank'||!c.enabled||!c.scoreboardEnabled||(!standalone&&!(window.SceneCustomization?.allowed(c,state.scene,'Scoreboard',state.scene==='game')??(state.scene==='game'))));
     widget.className='scoreboard-widget scoreboard-template-'+c.scoreboardTemplate+(c.scoreboardAccent?' scoreboard-tinted':'');widget.style.setProperty('--score-accent',c.scoreboardAccent||'#83c5b6');
-    Object.assign(widget.style,{left:c.scoreboardX+'px',top:c.scoreboardY+'px',width:c.scoreboardWidth+'px',transform:`scale(${c.scoreboardScale/100})`});
+    const panel=Math.max(0,Math.min(100,c.scoreboardPanelOpacity??96))/100,edge=Math.min(1,panel/.96),accent=c.scoreboardAccent||'#83c5b6';widget.style.setProperty('--score-panel-opacity',panel);widget.style.setProperty('--score-edge-opacity',edge);widget.style.setProperty('--score-border-accent',accent+Math.round(edge*255).toString(16).padStart(2,'0'));
+    Object.assign(widget.style,{opacity:(c.scoreboardOpacity??100)/100,left:c.scoreboardX+'px',top:c.scoreboardY+'px',width:c.scoreboardWidth+'px',transform:`scale(${c.scoreboardScale/100})`});
     $('scoreboardName').textContent=c.name||c.names[0]||'本次直播';$('scoreboardWins').textContent=s.wins;$('scoreboardLosses').textContent=s.losses;
     $('scoreboardRate').textContent=(s.winrate===null?'胜率 —':'胜率 '+s.winrate+'%')+' · '+s.streak;
     $('scoreboardMatchups').textContent=['T','Z','P'].map(r=>`v${r} ${s.matchups[r].wins}-${s.matchups[r].losses}`).join(' · ');

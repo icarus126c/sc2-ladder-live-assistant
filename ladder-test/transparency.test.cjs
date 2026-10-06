@@ -1,0 +1,16 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),vm=require('node:vm');
+const {createReplayStore,sanitize}=require('../ladder-replays.cjs'),M=require('../public/scene-customization.js'),{createCombinationStore}=require('../outfit-combinations.cjs'),presets=require('../public/outfit-presets.js');
+test('score transparency accepts fully clear panels and persists without changing scores; invalid alpha fails',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'透明度-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'record.json'),s=createReplayStore(file);s.add('win');s.configure({scoreboardOpacity:72,scoreboardPanelOpacity:0});const restored=createReplayStore(file);assert.equal(restored.getConfig().scoreboardOpacity,72);assert.equal(restored.getConfig().scoreboardPanelOpacity,0);assert.equal(restored.snapshot().stats.wins,1);
+ for(const value of [-1,101,55.5,'55',NaN])for(const key of ['scoreboardOpacity','scoreboardPanelOpacity'])assert.throws(()=>sanitize({[key]:value}));
+});
+test('transparent panel leaves score text fully visible and removes accent borders for all templates',()=>{
+ const nodes=new Map();function node(id){if(!nodes.has(id))nodes.set(id,{style:{setProperty(key,value){this[key]=value;}},textContent:'',hidden:false});return nodes.get(id);}
+ const win={};vm.runInNewContext(fs.readFileSync(require.resolve('../public/scoreboard.js'),'utf8'),{window:win,document:{getElementById:node,body:{dataset:{}}}});const s=createReplayStore();s.add('win');
+ for(const template of ['compact','bluegold','dual']){s.configure({scoreboardTemplate:template,scoreboardOpacity:100,scoreboardPanelOpacity:0,scoreboardAccent:'#83c5b6'});win.ScoreboardOverlay.render({scene:'game',ladder:s.snapshot()});const style=node('scoreboardWidget').style;assert.equal(style.opacity,1);assert.equal(style['--score-panel-opacity'],0);assert.equal(style['--score-edge-opacity'],0);assert.equal(style['--score-border-accent'],'#83c5b600');assert.equal(node('scoreboardWins').textContent,1);assert.equal(node('scoreboardWidget').hidden,false);}
+ s.configure({scoreboardOpacity:60,scoreboardPanelOpacity:55});win.ScoreboardOverlay.render({scene:'game',ladder:s.snapshot()});assert.equal(node('scoreboardWidget').style.opacity,.6);assert.equal(node('scoreboardWidget').style['--score-panel-opacity'],.55);
+});
+test('scene drafts can change only cosmetic transparency; mixed outfits retain the selected score alpha',()=>{
+ const patch={scoreboardOpacity:80,scoreboardPanelOpacity:35,catOpacity:60,gameFrameOpacity:75,dailyOpacity:50,opacity:55};for(const phase of ['game','loading','intermission','break'])assert.deepEqual(M.filter({...patch,toonHandle:'5-S2-1-999'},phase),patch);assert.deepEqual(M.filter(patch,'blank'),{});
+ const s=createReplayStore();s.configure(patch);const combos=createCombinationStore(),saved=combos.save('轻透搭配',s.getConfig());s.configure({scoreboardOpacity:100,scoreboardPanelOpacity:96});const applied=presets.buildPatch(s.getConfig(),{preset:saved.id},combos.list());assert.equal(applied.scoreboardOpacity,80);assert.equal(applied.scoreboardPanelOpacity,35);
+});

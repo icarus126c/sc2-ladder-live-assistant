@@ -20,7 +20,7 @@
   const combinationFields={
     gameframe:['gameFrameStyle','gameFrameAccent','gameFrameImage'],
     catkeyboard:['catCharacter','catAccent','catFrontImage','catRearImage'],
-    scoreboard:['scoreboardTemplate','scoreboardAccent'],
+    scoreboard:['scoreboardTemplate','scoreboardAccent','scoreboardOpacity','scoreboardPanelOpacity'],
     overlay:['template','accent'],
     waiting:['waitingTheme','waitingBackground','waitingBackgroundImage','waitingBackgroundVideo','waitingColor','waitingColorSecondary','waitingAccent','waitingTextColor','waitingPanelOpacity','waitingLayout','waitingWidth'],
     break:['breakTheme','breakBackground','breakBackgroundImage','breakBackgroundVideo','breakColor','breakColorSecondary','breakAccent','breakTextColor','breakPanelOpacity','breakLayout','breakWidth']

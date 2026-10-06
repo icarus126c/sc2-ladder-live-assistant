@@ -3,7 +3,7 @@ const {defaults:appearance,sanitize:style,dayKey}=require('./ladder.cjs');
 const {sceneDefaults,sanitizeScenes}=require('./scene-settings.cjs');
 const daily=require('./daily-stats.cjs');
 const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
-  scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardDetails:true,
+  scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
   waitingLayout:'center',waitingImageFit:'cover',waitingDim:35,waitingPanelOpacity:35,waitingWidth:1320,waitingTitleSize:66,waitingKicker:'TEAM AENEAS / LADDER SESSION',
   waitingShowName:true,waitingShowMMR:true,waitingShowRecord:true,waitingShowMatchups:true,waitingShowPhase:true,waitingShowHUD:true,
@@ -17,12 +17,12 @@ const race=r=>({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R',Terr:'T',Prot:'P'})[r
 function sanitize(input,base=defaults){
   const c=daily.sanitize(input,sanitizeScenes(input,style(input,base)));
   for(const key of ['replayDirectory','toonHandle'])if(key in input){if(typeof input[key]!=='string'||input[key].length>1024||input[key].includes('\0'))throw Error('目录或账号格式不正确');c[key]=input[key].trim();}
-  if(c.toonHandle&&!/^\d+-S2-\d+-\d+$/.test(c.toonHandle))throw Error('账号请填写完整格式，例如 5-S2-1-12345678');
+  if(c.toonHandle&&!/^\d+-S2-\d+-\d+$/.test(c.toonHandle))throw Error('账号请填写完整格式，例如 5-S2-1-9469666');
   if('mmrMode'in input){if(!['replay','estimate','manual'].includes(input.mmrMode))throw Error('MMR模式不正确');c.mmrMode=input.mmrMode;}
   for(const key of ['scoreboardEnabled','scoreboardDetails'])if(key in input){if(typeof input[key]!=='boolean')throw Error('计分器开关格式不正确');c[key]=input[key];}
   if('scoreboardAccent'in input){if(typeof input.scoreboardAccent!=='string'||(input.scoreboardAccent!==''&&!/^#[a-f\d]{6}$/i.test(input.scoreboardAccent)))throw Error('计分器颜色不正确');c.scoreboardAccent=input.scoreboardAccent;}
   if('scoreboardTemplate'in input){if(!['compact','bluegold','dual'].includes(input.scoreboardTemplate))throw Error('计分器模板不正确');c.scoreboardTemplate=input.scoreboardTemplate;}
-  for(const [key,min,max]of [['scoreboardX',0,1900],['scoreboardY',0,1060],['scoreboardWidth',320,1000],['scoreboardScale',50,150]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('计分器位置或大小超出范围');c[key]=input[key];}
+  for(const [key,min,max]of [['scoreboardX',0,1900],['scoreboardY',0,1060],['scoreboardWidth',320,1000],['scoreboardScale',50,150],['scoreboardOpacity',0,100],['scoreboardPanelOpacity',0,100]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('计分器位置或大小超出范围');c[key]=input[key];}
   for(const key of ['gameFrameEnabled','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations'])if(key in input){if(typeof input[key]!=='boolean')throw Error('游戏边框开关格式不正确');c[key]=input[key];}
   if('gameFrameStyle'in input){if(!['slim','corners','nailong','anes','naiwa','nahida','vesna','nicole','custom'].includes(input.gameFrameStyle))throw Error('游戏边框样式不正确');c.gameFrameStyle=input.gameFrameStyle;}
   for(const key of ['gameFrameImage','catFrontImage','catRearImage'])if(key in input){if(typeof input[key]!=='string'||(input[key]!==''&&!/^\/style-assets\/[a-f\d]{64}\.png$/.test(input[key])))throw Error('请选择已安装风格中的素材');c[key]=input[key];}
