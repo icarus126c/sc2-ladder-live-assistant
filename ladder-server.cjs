@@ -1,4 +1,5 @@
 const {createCombinationStore}=require('./outfit-combinations.cjs');
+const {discoverAccounts,inspectAccount}=require('./account-discovery.cjs');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const gameFrame=require('./public/gameframe-template.js');
 const sceneMedia=require('./scene-media.cjs');
@@ -14,7 +15,7 @@ function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array
   if(input.obsMapping){for(const k of ['game','intermission','loading','break','blank'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
   return c;
 }
-function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={}}={}){
+function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
   const token=crypto.randomBytes(24).toString('hex'),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
   let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null;
   const canUndoOutfit=()=>!!lastOutfit&&Object.entries(lastOutfit.after).every(([k,v])=>ladder.getConfig()[k]===v);
@@ -39,7 +40,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
   routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
   for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
-  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json'])routes['/'+file]=file;
+  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
     const actual=server.address()?.port||port,hosts=[`127.0.0.1:${actual}`,`localhost:${actual}`];res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
     const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));};
@@ -89,6 +90,8 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手操作'});
         const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>50000)throw Error('请求过大');chunks.push(chunk);}const i=JSON.parse(Buffer.concat(chunks).toString('utf8'));
         switch(i.action){
+          case'identityDetect':return json(200,await discoverAccounts(ladder.getConfig(),accountOptions));
+          case'identityInspect':return json(200,await inspectAccount(ladder.getConfig(),i.replayDirectory,{...accountOptions,parser:accountOptions.parser||parser}));
           case'liveConnect':interactions.configure({roomId:i.roomId,mode:i.mode});await bili.connect({roomId:i.roomId,mode:i.mode,credentials:i.credentials});break;
           case'liveDisconnect':await bili.disconnect();break;
           case'liveConfigure':interactions.configure(i.config);break;

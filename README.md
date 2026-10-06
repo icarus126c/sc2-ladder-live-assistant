@@ -26,7 +26,7 @@
 
 ## 录像统计设置
 
-进入“录像与账号”，优先填写自己的完整账号 ID，或用精确昵称。账号和昵称都为空时，仅从含完整账号 ID 的录像目录识别。填写自己的 Multiplayer 目录并保存，然后扫描录像。
+进入“录像与账号”，点击“自动读取本机账号”。一个账号会自动填入；多个账号请选择自己的账号，点击“保存身份与录像目录”，再扫描录像。工具从本机账号文件夹读取完整 ID，并从最近录像中核对昵称，不猜测当前登录账号。也可以手动填写完整 ID / 精确昵称和自己的 Multiplayer 目录。
 
 显示昵称不用于识别自己。单位生产统计包含后来阵亡的已生产单位；手动补记但未关联录像没有单位统计。人机、旁观、身份不明和非 1v1 不自动计入。旧录像可以补齐今日数据，但不增加本次启动后的胜负。
 
@@ -71,7 +71,18 @@ npm test
 
 如果这个助手对你的直播有帮助，欢迎自愿支持项目的持续开发和维护。赞助不影响工具使用权限。
 
-[查看赞助说明](SPONSOR.md) · [来 B 站直播间交流](https://live.bilibili.com/269071)
+[查看微信 / 支付宝收款码](SPONSOR.md) · [来 B 站直播间交流](https://live.bilibili.com/269071)
+
+<table>
+  <tr>
+    <th>微信</th>
+    <th>支付宝</th>
+  </tr>
+  <tr>
+    <td><a href="docs/sponsorship/wechat.png"><img src="docs/sponsorship/wechat.png" alt="微信赞助码" width="200"></a></td>
+    <td><a href="docs/sponsorship/alipay.png"><img src="docs/sponsorship/alipay.png" alt="支付宝赞助码" width="200"></a></td>
+  </tr>
+</table>
 
 ## 许可
 

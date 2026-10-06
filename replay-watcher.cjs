@@ -6,7 +6,7 @@ function parseReplay(file,config){return new Promise((resolve,reject)=>{
   child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');let out='',err='',settled=false;const timer=setTimeout(()=>{child.kill();finish(Error('解析超时，请重试或更换录像'));},15000);
   function finish(error,value){if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve(value);}
   child.on('error',error=>finish(Error('便携 Python 启动失败：'+error.message)));child.stdout.on('data',b=>{out+=b.toString('utf8');if(out.length>500000){child.kill();finish(Error('录像解析输出过大'));}});child.stderr.on('data',b=>err=(err+b.toString('utf8')).slice(-2000));
-  child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify({toonHandle:config.toonHandle,names:config.names}));
+  child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify({toonHandle:config.toonHandle,names:config.names,metadataOnly:config.metadataOnly===true}));
   child.on('close',code=>{try{const p=JSON.parse(out);if(code||!p.ok)finish(Error(p.error||err||'解析失败'));else finish(null,p);}catch{finish(Error('录像解析器未返回有效数据：'+err));}});
 });}
 function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.now,intervalMs=4000}){

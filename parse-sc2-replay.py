@@ -138,7 +138,7 @@ def parse_replay(replay_path, config):
             self_result = "L"
 
     daily_metrics = {"version": 1, "zerglings": None, "zealots": None, "workersKilled": None, "status": "unavailable", "note": "尚未确认本机玩家"}
-    if len(self_players) == 1 and len(opponents) == 1 and len(players) == 2:
+    if not config.get("metadataOnly") and len(self_players) == 1 and len(opponents) == 1 and len(players) == 2:
         try:
             try:
                 tracker_protocol = build(base_build)
