@@ -3,7 +3,7 @@
   function render(state,{standalone=false,preview=false}={}){
     const widget=$('scoreboardWidget');if(!widget)return;
     const c=state.ladder.config,s=state.ladder.session?.stats||state.ladder.stats;
-    widget.hidden=!preview&&(state.scene==='blank'||!c.enabled||!c.scoreboardEnabled||(!standalone&&state.scene!=='game'));
+    widget.hidden=!preview&&(state.scene==='blank'||!c.enabled||!c.scoreboardEnabled||(!standalone&&!(window.SceneCustomization?.allowed(c,state.scene,'Scoreboard',state.scene==='game')??(state.scene==='game'))));
     widget.className='scoreboard-widget scoreboard-template-'+c.scoreboardTemplate+(c.scoreboardAccent?' scoreboard-tinted':'');widget.style.setProperty('--score-accent',c.scoreboardAccent||'#83c5b6');
     Object.assign(widget.style,{left:c.scoreboardX+'px',top:c.scoreboardY+'px',width:c.scoreboardWidth+'px',transform:`scale(${c.scoreboardScale/100})`});
     $('scoreboardName').textContent=c.name||c.names[0]||'本次直播';$('scoreboardWins').textContent=s.wins;$('scoreboardLosses').textContent=s.losses;

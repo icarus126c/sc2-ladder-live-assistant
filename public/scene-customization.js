@@ -1,0 +1,11 @@
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.SceneCustomization=factory();})(typeof window==='object'?window:this,()=>{
+ const prefixes={game:'game',loading:'loading',intermission:'waiting',break:'break',blank:'blank'},phases=Object.keys(prefixes);
+ const layers={Frame:'游戏边框',Keyboard:'按键助手',Scoreboard:'战绩计分器',DailyWidget:'今日数据浮层',Gifts:'礼物提示',Income:'收益提示',Raffle:'抽奖提示'};
+ const suffixes=['Theme','Background','BackgroundImage','BackgroundVideo','VideoMuted','VideoLoop','ShowText','TeamName','Title','Note','Kicker','Color','ColorSecondary','Accent','TextColor','Layout','ImageFit','Dim','PanelOpacity','Width','TitleSize','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest','ShowZerglings','ShowZealots','ShowWorkersKilled','ShowStrongest','ShowDailyTime','FreePosition','TextX','TextY'];
+ const positions=['gameFrameAccent','catAccent','catX','catY','catWidth','catView','catKeyboardSide','scoreboardX','scoreboardY','scoreboardWidth','scoreboardScale','dailyX','dailyY','dailyWidth','dailyScale','gameFrameStyle','gameFrameX','gameFrameY','gameFrameOpacity','gameFrameDecorationScale'];
+ const enableFields={Frame:'gameFrameEnabled',Keyboard:'catEnabled',Scoreboard:'scoreboardEnabled',DailyWidget:'dailyEnabled'};
+ function fields(phase){const p=prefixes[phase];if(!p||phase==='blank')return [];return [...Object.keys(layers).map(k=>p+'Show'+k),...(phase==='game'?[]:suffixes.map(k=>p+k)),...positions,...Object.values(enableFields),'showHUD','enabled','dailyGame','dailyWaiting','dailyBreak'];}
+ function filter(config,phase){const valid=new Set(fields(phase));return Object.fromEntries(Object.entries(config||{}).filter(([k,v])=>valid.has(k)&&['string','boolean','number'].includes(typeof v)&&(typeof v!=='number'||Number.isFinite(v))));}
+ function allowed(c,phase,layer,fallback=false){if(phase==='blank')return false;const value=c?.[prefixes[phase]+'Show'+layer];return typeof value==='boolean'?value:fallback;}
+ return{phases,prefixes,layers,suffixes,positions,enableFields,fields,filter,allowed};
+});

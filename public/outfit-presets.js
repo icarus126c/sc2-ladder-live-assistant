@@ -25,6 +25,7 @@
     waiting:['waitingTheme','waitingBackground','waitingBackgroundImage','waitingBackgroundVideo','waitingColor','waitingColorSecondary','waitingAccent','waitingTextColor','waitingPanelOpacity','waitingLayout','waitingWidth'],
     break:['breakTheme','breakBackground','breakBackgroundImage','breakBackgroundVideo','breakColor','breakColorSecondary','breakAccent','breakTextColor','breakPanelOpacity','breakLayout','breakWidth']
   };
+  combinationFields.waiting.push(...combinationFields.waiting.map(k=>k.replace(/^waiting/,'loading')));
   function captureCombination(config){return Object.fromEntries(Object.values(combinationFields).flat().map(k=>[k,config[k]]));}
   function buildPatch(config,input,installed){
     const choice=normalize(input,installed),p=resolve(choice.preset,installed),patch={};
@@ -46,6 +47,7 @@
       }
       if(choice.enableTools){const field={gameframe:'gameFrameEnabled',catkeyboard:'catEnabled',scoreboard:'scoreboardEnabled',overlay:'showHUD'}[key];if(field)patch[field]=true;}
     }
+    if(choice.modules.includes('waiting'))for(const [k,v]of Object.entries({...patch}))if(k.startsWith('waiting')&&!k.endsWith('Kicker'))patch['loading'+k.slice(7)]=v;
     return patch;
   }
   return{modules,presets,normalize,buildPatch,registerInstalled,resolve,captureCombination,combinationFields};

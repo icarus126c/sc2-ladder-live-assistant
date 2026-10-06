@@ -2,7 +2,7 @@
   const $=id=>document.getElementById(id);let rendered='';
   function render(state,{standalone=false,preview=false}={}){
     const frame=$('gameFrame');if(!frame)return;
-    const c=state.ladder.config;frame.hidden=!preview&&(state.scene==='blank'||!c.enabled||!c.gameFrameEnabled||(!standalone&&state.scene!=='game'));
+    const c=state.ladder.config;frame.hidden=!preview&&(state.scene==='blank'||!c.enabled||!c.gameFrameEnabled||(!standalone&&!(window.SceneCustomization?.allowed(c,state.scene,'Frame',state.scene==='game')??(state.scene==='game'))));
     const markup=window.GameFrameTemplate.build(c);if(markup!==rendered){frame.innerHTML=markup;rendered=markup;}
   }
   window.GameFrameOverlay={render};

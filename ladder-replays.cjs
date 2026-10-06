@@ -34,7 +34,7 @@ function sanitize(input,base=defaults){
   if('catCharacter'in input){if(!['cat','vesna','naiwa','nahida','nicole','custom'].includes(input.catCharacter))throw Error('按键助手角色不正确');c.catCharacter=input.catCharacter;}
   for(const [key,min,max]of [['catX',0,1600],['catY',0,820],['catWidth',280,760],['catOpacity',20,100],['catHold',120,1000]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('猫娘助手外观数值超出范围');c[key]=input[key];}
   if('catAccent'in input){if(typeof input.catAccent!=='string'||!/^#[a-f\d]{6}$/i.test(input.catAccent))throw Error('按键亮起颜色不正确');c.catAccent=input.catAccent;}
-  if('catView'in input){if(!['split','classic','rear'].includes(input.catView))throw Error('猫娘助手视角不正确');c.catView=input.catView;}
+  if('catView'in input){if(!['split','classic','rear','flat'].includes(input.catView))throw Error('猫娘助手视角不正确');c.catView=input.catView;}
   if('catKeyboardSide'in input){if(!['left','right'].includes(input.catKeyboardSide))throw Error('请选择键盘左半或右半');c.catKeyboardSide=input.catKeyboardSide;}
   return c;
 }

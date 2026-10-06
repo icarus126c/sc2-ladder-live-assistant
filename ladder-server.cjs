@@ -7,11 +7,11 @@ const {createStylePackStore}=require('./style-packs.cjs');
 const {createInteractionStore,normalizeBiliEvent}=require('./live-interactions.cjs'),{createBilibiliClient}=require('./bilibili-live.cjs');
 const {createKeyboardInput}=require('./keyboard-input.cjs');
 const {createReplayStore}=require('./ladder-replays.cjs'),{createReplayWatcher}=require('./replay-watcher.cjs'),{createSc2Monitor}=require('./sc2.cjs');
-const defaults={sc2AutoEnabled:false,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:false,obsMapping:{game:'',intermission:'',break:'',blank:''}};
+const defaults={sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:false,obsMapping:{game:'',intermission:'',loading:'',break:'',blank:''}};
 function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array.isArray(input))throw Error('设置格式错误');const c={...base,obsMapping:{...base.obsMapping}};
   for(const k of ['sc2AutoEnabled','sc2AutoPaused','sc2IncludeReplays'])if(k in input){if(typeof input[k]!=='boolean')throw Error('开关格式错误');c[k]=input[k];}
   for(const [k,min,max]of [['sc2ClientPort',1024,65535],['sc2StartDelay',0,10],['sc2EndDelay',0,60]])if(k in input){if(!Number.isFinite(input[k])||(k==='sc2ClientPort'&&!Number.isInteger(input[k]))||input[k]<min||input[k]>max)throw Error('切换设置超出范围');c[k]=input[k];}
-  if(input.obsMapping){for(const k of ['game','intermission','break','blank'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
+  if(input.obsMapping){for(const k of ['game','intermission','loading','break','blank'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
   return c;
 }
 function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={}}={}){
@@ -23,10 +23,10 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
   const stylePacks=createStylePackStore(dataDir);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.2.0',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.3.0',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
   const broadcast=()=>{revision++;for(const res of clients)res.write(`data: ${JSON.stringify(snapshot())}\n\n`);};
   function persist(){if(!settings)return;fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(settings+'.tmp',JSON.stringify(config,null,2));fs.renameSync(settings+'.tmp',settings);}
-  const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:250,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
+  const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
   const watcher=createReplayWatcher({store:ladder,onUpdate:broadcast,parser,now,intervalMs});
   let liveUpdateTimer=null;const queueLiveUpdate=()=>{if(!liveUpdateTimer){liveUpdateTimer=setTimeout(()=>{liveUpdateTimer=null;broadcast();},300);liveUpdateTimer.unref();}};
   const bili=createBilibiliClient({...biliOptions,now,onRoom:roomId=>interactions.configure({roomId}),onEvent:event=>{interactions.ingest(event);queueLiveUpdate();},onUpdate:queueLiveUpdate});
@@ -37,7 +37,8 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   for(const file of ['nahida-keys-v1.png','vesna-keys-v1.png','naiwa-keys-v1.png','nahida-frame-v1.png','starcraft-scene-v1.png'])routes['/assets/'+file]='assets/'+file;
   for(const f of ['nicole-frame-v1.png','nicole-keys-v1.png','nicole-waiting-v1.png','nicole-away-v1.png'])routes['/assets/'+f]='assets/'+f;
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
-  routes['/waiting-screen']=routes['/away-screen']='ladder-output.html';
+  routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
+  for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
   for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
     const actual=server.address()?.port||port,hosts=[`127.0.0.1:${actual}`,`localhost:${actual}`];res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
@@ -115,7 +116,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
           case'replayResolve':ladder.resolve(i.key,i.recordId,i.newRecord===true);break;
           case'sc2Check':await sc2.poll();break;
           case'configure':{const before=config;config=sanitize(i.config,config);sc2.configure(before);persist();break;}
-          case'transition':case'cut':{if(!['game','intermission','break','blank'].includes(i.scene))throw Error('场景无效');scene=i.scene;if(config.sc2AutoEnabled){const before=config;config={...config,sc2AutoPaused:true};sc2.configure(before);persist();}break;}
+          case'transition':case'cut':{if(!['game','intermission','loading','break','blank'].includes(i.scene))throw Error('场景无效');scene=i.scene;if(config.sc2AutoEnabled){const before=config;config={...config,sc2AutoPaused:true};sc2.configure(before);persist();}break;}
           default:throw Error('未知操作');
         }broadcast();return json(200,snapshot());
       }
@@ -131,7 +132,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
 if(require.main===module){
   const port=Number(process.env.SC2_LADDER_PORT||17864);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('天梯服务端口无效');
   let app;try{app=createAssistant({port});}catch(error){console.error('保存数据无法读取，请先备份 .ladder-data 后检查：'+error.message);process.exit(1);}
-  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
+  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0','2.3.0'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
   app.server.listen(port,'127.0.0.1',()=>{console.log(`星际2天梯直播助手 http://127.0.0.1:${port}`);if(process.argv.includes('--open'))open(port);});
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>app.close());
 }

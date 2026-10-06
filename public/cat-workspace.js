@@ -8,7 +8,7 @@
   function update(){
     $('catDraftStatus').textContent=dirty?'预览草稿 · 尚未应用':'已保存';
     const classic=$('catView').value==='classic';$('catHalfSettings').hidden=classic;
-    $('catViewNote').textContent=classic?'原版保留完整键盘和倾斜立体外观。':$('catView').value==='rear'?'侧后方露出侧脸，角色与同一个约30°倾斜的键盘一起展示。':'角色动作与按键展示分开；半边键盘更大、更清楚。';
+    $('catViewNote').textContent=$('catView').value==='flat'?'纯平面半键盘，不显示角色；按键和鼠标直接亮起。':classic?'原版保留完整键盘和倾斜立体外观。':$('catView').value==='rear'?'侧后方露出侧脸，角色与同一个约30°倾斜的键盘一起展示。':'角色动作与按键展示分开；半边键盘更大、更清楚。';
     for(const button of document.querySelectorAll('[data-cat-view]'))button.setAttribute('aria-pressed',String(button.dataset.catView===$('catView').value));
     if(state)for(const id of ['catDetailPreview','catPositionPreview'])$(id).contentWindow?.postMessage({type:'catDraft',config:config()},location.origin);
   }

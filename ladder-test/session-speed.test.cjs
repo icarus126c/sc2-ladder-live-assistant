@@ -19,9 +19,9 @@ test('Session undo leaves pre-launch records alone, reconciles manual correction
  const ai=replay(now);ai.players[1].human=false;assert.equal(store.acceptReplay(ai,'ai').kind,'skipped');assert.match(store.snapshot().status,/人机/);assert.equal(store.snapshot().stats.total,1);
  store.configure({toonHandle:'5-S2-1-11'});now+=10000;store.acceptReplay(replay(now,'W','5-S2-1-11'),'other-account');assert.equal(store.snapshot().session.stats.total,1);store.configure({toonHandle:'5-S2-1-9'});assert.equal(store.snapshot().session.stats.total,0);
 });
-test('Default zero delay changes scene after two fast confirmed samples and supports decimal tuning',()=>{
+test('Default zero delay confirms entry and covers menus immediately and supports decimal tuning',()=>{
  assert.equal(defaults.sc2StartDelay,0);assert.equal(defaults.sc2EndDelay,0);assert.equal(sanitize({sc2StartDelay:0.2,sc2EndDelay:0.4}).sc2EndDelay,0.4);for(const bad of [NaN,Infinity,-0.1,11,'0'])assert.throws(()=>sanitize({sc2StartDelay:bad}));
- const engine=new AutomationEngine(),config={...defaults,sc2AutoEnabled:true};assert.equal(engine.step('live',config,'intermission',false,0).target,null);assert.equal(engine.step('live',config,'intermission',false,250).target,'game');assert.equal(engine.step('menu',config,'game',false,500).target,null);assert.equal(engine.step('menu',config,'game',false,750).target,'intermission');assert.equal(engine.step('offline',config,'game',false,1000).target,null);
+ const engine=new AutomationEngine(),config={...defaults,sc2AutoEnabled:true};assert.equal(engine.step('live',config,'intermission',false,0).target,null);assert.equal(engine.step('live',config,'intermission',false,250).target,'game');assert.equal(engine.step('menu',config,'game',false,500).target,'intermission');assert.equal(engine.step('menu',config,'game',false,750).target,'intermission');assert.equal(engine.step('offline',config,'game',false,1000).target,null);
  const delayed=new AutomationEngine(),slow={...config,sc2StartDelay:0.6};for(const time of [0,250,500])assert.equal(delayed.step('live',slow,'intermission',false,time).target,null);assert.equal(delayed.step('live',slow,'intermission',false,750).target,'game');
 });
 test('Live scoreboard and waiting use session results while today longest still uses daily history',()=>{

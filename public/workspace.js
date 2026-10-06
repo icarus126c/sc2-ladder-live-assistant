@@ -1,6 +1,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const views={tools:{name:'工具库',title:'选择今天要用的工具。',eyebrow:'按需添加 · 自由组合',description:'从直播预览开始，把需要的工具加入你的直播。'},console:{name:'直播预览',title:'直播预览',eyebrow:'直播主界面',description:'在这里看画面、切场景，独立控制按键与录像助手。'},scoreboard:{name:'战绩计分器',title:'战绩计分器',eyebrow:'战绩工具',description:'选择计分器模板，调整位置，并管理今天的每一局。'},overlay:{name:'信息栏模板',title:'信息栏模板',eyebrow:'直播外观',description:'选择等待或局间展示的信息栏模板，游戏进行时自动隐藏。'},settings:{name:'录像与账号',title:'录像与账号',eyebrow:'个人设置',description:'连接你的游戏身份，让每盘录像都记在正确的账号下。'}};
+  views.scenes={name:'画面自定义',title:'每个场景，都按你的习惯。',eyebrow:'场景工作台',description:'选择场景，定制显示内容与布局。这里只编辑预览，应用后更新直播。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
   views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'窄边、战队与奶蛙 / 纳西妲 / 薇斯纳边框，按需调整遮挡。'};
@@ -18,10 +19,11 @@
     for(const panel of document.querySelectorAll('[data-view]')){panel.hidden=panel.dataset.view!==view;for(const frame of panel.querySelectorAll('iframe[data-src]')){const target=panel.hidden?'about:blank':frame.dataset.src;if(frame.getAttribute('src')!==target)frame.setAttribute('src',target);}}
     for(const link of document.querySelectorAll('[data-route]')){if(link.dataset.route===view)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
     $('breadcrumb').textContent=meta.name;$('viewTitle').textContent=meta.title;$('viewEyebrow').textContent=meta.eyebrow;$('viewDescription').textContent=meta.description;$('backTools').hidden=view==='console';$('homeShortcuts').hidden=view!=='console';document.body.dataset.workspaceView=view;document.title=meta.name+' · 天梯直播工作室';
+    if(['waiting','break','gameframe','overlay','catkeyboard'].includes(view)){$('backTools').href='#scenes';$('backTools').textContent='返回画面自定义';}else{$('backTools').href='#console';$('backTools').textContent='返回直播预览';}
     window.scrollTo({top:0,behavior:'instant'});window.CatWorkspace?.route(view);
   }
   addEventListener('hashchange',route);route();
-  const scenePreviewNames={game:'游戏画面',intermission:'搜索 / 等待',break:'暂离画面',blank:'空白场景'};
+  const scenePreviewNames={game:'游戏画面',intermission:'搜索 / 等待',break:'暂离画面',loading:'比赛载入',blank:'空白场景'};
   let scenePreviewPhase='game';
   function sendScenePreview(){ $('sceneOnlyPreview').contentWindow?.postMessage({type:'scenePreview',phase:scenePreviewPhase},location.origin); }
   $('sceneOnlyPreview').addEventListener('load',sendScenePreview);
@@ -35,9 +37,9 @@
   }));
   async function perform(fn){try{await fn();}catch(error){window.AssistantActions.toast(error.message);if(state)render(state);}}
   const configure=config=>window.AssistantActions.act('ladderConfigure',{config});
-  function connection(value){connected=value;window.DailyWorkspace?.connection(value);window.LiveWorkspace?.connection(value);window.OutfitWorkspace?.connection(value);window.CatWorkspace?.connection(value);for(const id of ['homeScoreboard','homeHUD','scoreboardEnabled','homeGameFrame','gameFrameEnabled','gameFrameApply','scoreboardApply',...Object.keys(mainSwitches),'mainFrameStyle','mainKeyboardSide','mainKeyboardView','mainTextSave','mainTextDiscard'])$(id).disabled=!value||!state;for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!value||!state;for(const id of Object.keys(mainTextFields))$(id).disabled=!value||!state;for(const key of scoreFields)$(key).disabled=!state;$('scoreboardAccentCustom').disabled=!state;for(const b of document.querySelectorAll('[data-score-template],[data-score-position],[data-score-size],[data-frame-quick]'))b.disabled=!state;$('mainKeyboardSide').disabled=!value||!state||state.ladder.config.catView==='classic';window.SceneWorkspace?.connection(value);}
+  function connection(value){connected=value;window.SceneEditor?.connection(value);window.DailyWorkspace?.connection(value);window.LiveWorkspace?.connection(value);window.OutfitWorkspace?.connection(value);window.CatWorkspace?.connection(value);for(const id of ['homeScoreboard','homeHUD','scoreboardEnabled','homeGameFrame','gameFrameEnabled','gameFrameApply','scoreboardApply',...Object.keys(mainSwitches),'mainFrameStyle','mainKeyboardSide','mainKeyboardView','mainTextSave','mainTextDiscard'])$(id).disabled=!value||!state;for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!value||!state;for(const id of Object.keys(mainTextFields))$(id).disabled=!value||!state;for(const key of scoreFields)$(key).disabled=!state;$('scoreboardAccentCustom').disabled=!state;for(const b of document.querySelectorAll('[data-score-template],[data-score-position],[data-score-size],[data-frame-quick]'))b.disabled=!state;$('mainKeyboardSide').disabled=!value||!state||state.ladder.config.catView==='classic';window.SceneWorkspace?.connection(value);}
   function obsStatus(ready){$('homeOBSStatus').textContent=ready?'OBS已连接':'OBS未连接';$('homeOBSDot').classList.toggle('connected',ready);}
-  function render(next){state=next;window.DailyWorkspace?.render(next);window.LiveWorkspace?.render(next);window.OutfitWorkspace?.render(next);window.CatWorkspace?.render(next);const c=next.ladder.config,s=next.ladder.stats,live=next.ladder.session?.stats||s;
+  function render(next){state=next;window.SceneEditor?.render(next);window.DailyWorkspace?.render(next);window.LiveWorkspace?.render(next);window.OutfitWorkspace?.render(next);window.CatWorkspace?.render(next);const c=next.ladder.config,s=next.ladder.stats,live=next.ladder.session?.stats||s;
     for(const [id,key]of Object.entries(mainSwitches))$(id).checked=c[key]===true;
     $('mainFrameStyle').value=c.gameFrameStyle;$('mainKeyboardSide').value=c.catKeyboardSide;$('mainKeyboardView').value=c.catView;$('mainKeyboardSide').disabled=!connected||c.catView==='classic';
     $('mainFrameStyle').querySelector('option[value=custom]').disabled=!c.gameFrameImage;

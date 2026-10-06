@@ -5,7 +5,10 @@ const PHASE_LABELS = { offline: '未连接星际2', unknown: '状态待确认', 
 function classify(ui, game) {
   if (!ui || !Array.isArray(ui.activeScreens) || ui.activeScreens.length > 100 || !ui.activeScreens.every(x => typeof x === 'string')) throw new Error('星际2界面状态格式无法识别');
   const screens = ui.activeScreens;
-  if (screens.some(x => /ScreenLoading/i.test(x)) || screens.length === 1) return 'loading';
+  if (screens.some(x => /ScreenLoading/i.test(x))) return 'loading';
+  const knownMenu=/^Screen(?:Score|UserProfile|BattleLobby|Home|Single|Collection|CoopCampaign|Custom|Replay|Multiplayer|Battlenet|NavigationSC2)\//;
+  if(screens.some(x=>knownMenu.test(x)))return 'menu';
+  if(screens.length===1)return 'loading';
   if (screens.length > 1) {
     // Unknown in-game dialogs must not be mistaken for leaving the match.
     const menu = /^Screen(?:Score|UserProfile|BattleLobby|Home|Single|Collection|CoopCampaign|Custom|Replay|Multiplayer|Battlenet|NavigationSC2)\//;
@@ -27,8 +30,9 @@ async function readClientDetails(port, signal) {
     }
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   }
-  const [ui, game] = await Promise.all([read('ui'), read('game')]);
-  return { phase: classify(ui, game), ui, game };
+  const ui=await read('ui'),phase=classify(ui,null);
+  if(phase==='menu'||phase==='loading')return {phase,ui,game:null};
+  const game=await read('game');return {phase:classify(ui,game),ui,game};
 }
 async function readClient(port, signal) { return (await readClientDetails(port, signal)).phase; }
 
@@ -41,26 +45,26 @@ class AutomationEngine {
       this.reset(); result.message = config.sc2AutoPaused ? '已暂停，手动切换优先' : '自动切换未开启'; return result;
     }
     const playing = phase === 'live' || (phase === 'replay' && config.sc2IncludeReplays);
-    if (!playing && phase !== 'menu') {
+    if (!playing && !['menu','loading'].includes(phase)) {
       this.candidate = ''; this.samples = 0;
       result.message = phase === 'replay' ? '录像自动切换未开启，保持当前画面' : phase === 'loading' ? '载入期间保持当前画面' : '状态不确定，保持当前画面';
       return result;
     }
-    const candidate = playing ? 'game' : 'intermission';
+    const candidate = playing ? 'game' : phase === 'loading' ? 'loading' : 'intermission';
     if (candidate !== this.candidate) { this.candidate = candidate; this.since = now; this.samples = 0; }
     this.samples++;
     if (!playing && !this.seenLive && config.sc2AutoMode !== 'ladder') return result;
-    const delay = (playing ? config.sc2StartDelay : config.sc2EndDelay) * 1000;
-    if (this.samples < 2 || now - this.since < delay) {
+    const delay = (playing ? config.sc2StartDelay : phase === 'loading' ? 0 : config.sc2EndDelay) * 1000;
+    if ((playing && this.samples < 2) || now - this.since < delay) {
       result.pending = { to: candidate, dueAt: this.since + delay };
       result.message = playing ? '正在确认比赛开始' : '已离开比赛，等待局间转场'; return result;
     }
     if (busy) { result.message = '等待当前转场完成'; return result; }
-    if (!['opening', 'game', 'intermission'].includes(scene)) { result.message = '暂离 / 结束画面保留，请恢复自动切换'; return result; }
+    if (!['opening', 'game', 'loading', 'intermission'].includes(scene)) { result.message = '暂离 / 结束画面保留，请恢复自动切换'; return result; }
     if (playing) this.seenLive = true;
-    if (scene === candidate) { if (!playing) this.seenLive = false; result.message = playing ? '比赛画面已同步' : '局间画面已同步'; return result; }
+    if (scene === candidate) { if (phase === 'menu') this.seenLive = false; result.message = playing ? '比赛画面已同步' : '局间画面已同步'; return result; }
     result.target = candidate;
-    result.message = playing ? '自动转场进入比赛' : '自动转场回到局间';
+    result.message = playing ? '自动转场进入比赛' : phase === 'loading' ? '自动显示比赛载入画面' : '已返回大厅，立即显示等待画面';
     return result;
   }
 }

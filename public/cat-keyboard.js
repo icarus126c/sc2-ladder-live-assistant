@@ -10,19 +10,19 @@
   function updateLayout(){const next=(config.catView||'split')+':'+(config.catKeyboardSide||'left')+':'+(config.catCharacter||'cat')+':'+(config.catCurve!==false);if(next===layout)return;layout=next;widget.innerHTML=window.CatKeyboardTemplate.build(config);keys=[...widget.querySelectorAll('[data-cat-key]')];avatar=widget.querySelector('.cat-avatar');combo=widget.querySelector('.cat-combo');rhythm=widget.querySelector('.cat-rhythm');lastCombo=lastRhythm='';lastPose=-1;lastBusy=null;}
   const render=(state,options={})=>{config=state.ladder.config;scene=state.scene;preview=options.preview===true;standalone=options.standalone===true;ready=true;
     updateLayout();
-    widget.hidden=!preview&&(scene==='blank'||config.enabled===false||config.catEnabled!==true||(!standalone&&scene!=='game'));
+    widget.hidden=!preview&&(scene==='blank'||config.enabled===false||config.catEnabled!==true||(!standalone&&!(window.SceneCustomization?.allowed(config,scene,'Keyboard',scene==='game')??(scene==='game'))));
     inputConnection();
     widget.style.left=(config.catX??1400)+'px';widget.style.top=(config.catY??320)+'px';widget.style.transform=`scale(${(config.catWidth??460)/570})`;
     widget.style.opacity=(config.catOpacity??100)/100;widget.style.setProperty('--cat-accent',config.catAccent||'#f2a7d5');
-    if(config.catCharacter==='nicole'){avatar.style.backgroundImage='url("/assets/nicole-keys-v1.png")';}else if(config.catCharacter==='custom'){const url=config.catView==='rear'?config.catRearImage:config.catFrontImage;const safe=/^\/style-assets\/[a-f\d]{64}\.png$/.test(url||'');avatar.style.backgroundImage=safe?`url("${url}")`:'none';}else avatar.style.backgroundImage='';
+    if(avatar&&config.catCharacter==='nicole'){avatar.style.backgroundImage='url("/assets/nicole-keys-v1.png")';}else if(avatar&&config.catCharacter==='custom'){const url=config.catView==='rear'?config.catRearImage:config.catFrontImage;const safe=/^\/style-assets\/[a-f\d]{64}\.png$/.test(url||'');avatar.style.backgroundImage=safe?`url("${url}")`:'none';}else if(avatar)avatar.style.backgroundImage='';
     widget.querySelector('.cat-mouse').hidden=config.catMouse===false;widget.querySelector('.cat-caption').hidden=config.catHints===false;
   };
   function ingest(frame){model.ingest(frame,config);}
   function animate(tick){if(ready&&!widget.hidden&&tick-lastPaint>=32){lastPaint=tick;const value=model.snapshot(config),pressed=new Set(value.pressed);
     for(const key of keys){const lit=pressed.has(key.dataset.catKey);if(lit!==key.classList.contains('is-down'))key.classList.toggle('is-down',lit);}
-    if(lastPose!==value.pose){avatar.dataset.pose=String(value.pose);lastPose=value.pose;}const busy=value.rate>=5;if(lastBusy!==busy){widget.classList.toggle('is-busy',busy);lastBusy=busy;}
+    if(lastPose!==value.pose){if(avatar)avatar.dataset.pose=String(value.pose);lastPose=value.pose;}const busy=value.rate>=5;if(lastBusy!==busy){widget.classList.toggle('is-busy',busy);lastBusy=busy;}
     if(lastCombo!==value.combo){combo.textContent=value.combo;lastCombo=value.combo;}
-    const text=value.active?(value.rate>=5?'啪嗒啪嗒！':(config.catCharacter==='naiwa'?'哟嚯 · 敲击中':config.catCharacter==='nahida'?'叶间 · 哒哒':['vesna','nicole','custom'].includes(config.catCharacter)?'轻敲 · 哒哒':'喵 · 敲击中')):(config.catCharacter==='naiwa'?'呱 · 等待按键':['vesna','nahida','nicole','custom'].includes(config.catCharacter)?'等待按键':'喵 · 等待按键');if(lastRhythm!==text){rhythm.textContent=text;lastRhythm=text;}
+    const text=config.catView==='flat'?(value.active?'按键响应中':'等待按键'):value.active?(value.rate>=5?'啪嗒啪嗒！':(config.catCharacter==='naiwa'?'哟嚯 · 敲击中':config.catCharacter==='nahida'?'叶间 · 哒哒':['vesna','nicole','custom'].includes(config.catCharacter)?'轻敲 · 哒哒':'喵 · 敲击中')):(config.catCharacter==='naiwa'?'呱 · 等待按键':['vesna','nahida','nicole','custom'].includes(config.catCharacter)?'等待按键':'喵 · 等待按键');if(lastRhythm!==text){rhythm.textContent=text;lastRhythm=text;}
   }requestAnimationFrame(animate);}
   window.CatKeyboardOverlay={render,ingest};requestAnimationFrame(animate);
   if(document.body.dataset.catSource==='true'){
