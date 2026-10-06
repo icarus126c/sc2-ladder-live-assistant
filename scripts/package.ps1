@@ -17,11 +17,12 @@ $taskStageRoot=Join-Path $taskSource ('work/package/'+[guid]::NewGuid().ToString
 $taskStage=Join-Path $taskStageRoot ('星际2天梯直播助手-'+$taskVersion)
 New-Item -ItemType Directory -Force -Path $taskStage,$taskOutput | Out-Null
 foreach($taskFile in Get-ChildItem -LiteralPath $taskSource -File){
-  if($taskFile.Extension -in @('.cjs','.py','.cmd') -or $taskFile.Name -in @('package.json','requirements.txt','LICENSE','README.md','ASSET-NOTICE.md','THIRD-PARTY-NOTICES.md','CHANGELOG.md')){
+  if($taskFile.Extension -in @('.cjs','.py','.cmd') -or $taskFile.Name -in @('package.json','requirements.txt','LICENSE','README.md','ASSET-NOTICE.md','THIRD-PARTY-NOTICES.md','CHANGELOG.md','SPONSOR.md')){
     Copy-Item -LiteralPath $taskFile.FullName -Destination $taskStage
   }
 }
 Copy-Item -LiteralPath (Join-Path $taskSource 'public') -Destination $taskStage -Recurse
+Copy-Item -LiteralPath (Join-Path $taskSource 'docs') -Destination $taskStage -Recurse
 Copy-Item -LiteralPath $taskRuntime -Destination (Join-Path $taskStage 'runtime') -Recurse
 Copy-Item -LiteralPath (Join-Path $taskSource 'start.cmd') -Destination (Join-Path $taskStage '启动天梯助手.cmd')
 if($GuideDirectory){

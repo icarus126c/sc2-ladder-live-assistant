@@ -24,7 +24,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
   const stylePacks=createStylePackStore(dataDir);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.3.1',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.3.2',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
   const broadcast=()=>{revision++;for(const res of clients)res.write(`data: ${JSON.stringify(snapshot())}\n\n`);};
   function persist(){if(!settings)return;fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(settings+'.tmp',JSON.stringify(config,null,2));fs.renameSync(settings+'.tmp',settings);}
   const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
@@ -135,7 +135,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
 if(require.main===module){
   const port=Number(process.env.SC2_LADDER_PORT||17864);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('天梯服务端口无效');
   let app;try{app=createAssistant({port});}catch(error){console.error('保存数据无法读取，请先备份 .ladder-data 后检查：'+error.message);process.exit(1);}
-  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0','2.3.0','2.3.1'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
+  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0','2.3.0','2.3.1','2.3.2'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
   app.server.listen(port,'127.0.0.1',()=>{console.log(`星际2天梯直播助手 http://127.0.0.1:${port}`);if(process.argv.includes('--open'))open(port);});
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>app.close());
 }
