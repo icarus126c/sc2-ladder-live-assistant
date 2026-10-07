@@ -43,3 +43,10 @@
 .scene-fireflies{position:absolute;inset:0;background:radial-gradient(circle at 8% 20%,#e5f7ba55 2px,transparent 4px),radial-gradient(circle at 23% 83%,#e5f7ba40 2px,transparent 4px),radial-gradient(circle at 56% 12%,#e5f7ba55 2px,transparent 4px),radial-gradient(circle at 63% 71%,#e5f7ba40 2px,transparent 5px),radial-gradient(circle at 89% 88%,#e5f7ba55 2px,transparent 4px),radial-gradient(ellipse at 78% 48%,#a8d77612,transparent 42%)}
 .waiting-theme-nahida.waiting-layout-right .scene-character{right:auto;left:30px}
 .waiting-theme-nahida.waiting-layout-right .scene-leaf-arch{right:auto;left:66px}
+
+.waiting-theme-arknights .waiting-inner{border-radius:0;border:1px solid #f1f1ed55;border-top:4px solid #f5c928;padding:48px;box-shadow:14px 14px 0 #14191e55;backdrop-filter:blur(6px)}
+.waiting-theme-arknights #waitingTitle{letter-spacing:2px;font-weight:800}.waiting-theme-arknights #waitingKicker{letter-spacing:4px}
+.scene-arknights-identity{position:absolute;left:64px;top:54px;display:flex;align-items:center;gap:22px;color:#f1f1ed;letter-spacing:5px;font:700 23px 'Microsoft YaHei',sans-serif}.scene-arknights-identity img{width:70px;height:80px;object-fit:contain}.scene-arknights-identity small{display:block;margin-top:8px;color:#f5c928;font-size:11px;letter-spacing:3px}
+.scene-arknights-chen{position:absolute;right:-35px;bottom:-10px;width:1010px;height:1010px;object-fit:contain;filter:drop-shadow(0 12px 18px #0005)}
+.scene-arknights-away .scene-arknights-chen{opacity:.7;filter:saturate(.55) drop-shadow(0 12px 18px #0005)}.scene-arknights-rule{position:absolute;left:64px;right:64px;bottom:46px;border-top:1px solid #f1f1ed55}.scene-arknights-rule::before{content:'';display:block;width:90px;height:5px;margin-top:-3px;background:#f5c928}
+.waiting-theme-arknights.waiting-layout-right .scene-arknights-chen{right:auto;left:-35px}.waiting-theme-arknights.waiting-layout-center .scene-arknights-chen{opacity:.3}

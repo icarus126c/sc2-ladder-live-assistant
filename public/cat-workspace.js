@@ -23,7 +23,7 @@
   $('catTryKeys').addEventListener('keydown',event=>{if(view!=='catkeyboard')return;event.preventDefault();if(event.repeat)return;clearInterval(demoTimer);demoTimer=null;manual.add(keyId(event));sendDemo([...manual]);$('catDemoStatus').textContent='试按预览 · '+[...manual].map(key=>key.replace(/Left$|Right$/,'')).join(' + ');});
   $('catTryKeys').addEventListener('keyup',event=>{event.preventDefault();manual.delete(keyId(event));sendDemo([...manual]);});
   $('catTryKeys').addEventListener('blur',()=>{if(manual.size)stopDemo();});addEventListener('blur',()=>{if(manual.size)stopDemo();});
-  $('catCharacter').addEventListener('change',()=>{const value={cat:'#f2a7d5',vesna:'#8bded4',naiwa:'#c7db71',nahida:'#aedc81',nicole:'#e7cb90'}[$('catCharacter').value];if(value)$('catAccent').value=value;});
+  $('catCharacter').addEventListener('change',()=>{const value={cat:'#f2a7d5',vesna:'#8bded4',naiwa:'#c7db71',nahida:'#aedc81',nicole:'#e7cb90',arknights:'#f5c928'}[$('catCharacter').value];if(value)$('catAccent').value=value;});
   $('catForm').addEventListener('input',()=>{dirty=true;update();});$('catForm').addEventListener('change',()=>{dirty=true;update();});
   for(const button of document.querySelectorAll('[data-cat-view]'))button.addEventListener('click',()=>{$('catView').value=button.dataset.catView;dirty=true;update();});
   $('catForm').addEventListener('submit',event=>{event.preventDefault();perform(async()=>{const next=await window.AssistantActions.act('ladderConfigure',{config:config()});dirty=false;render(next);window.AssistantActions.toast('按键助手设置已应用');});});

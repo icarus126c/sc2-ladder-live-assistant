@@ -7,3 +7,5 @@
 软件页面使用新绘制的通用控制台示意图与无收款信息的赞助占位图，不包含原始上传参考截图。`docs/sponsorship/` 的微信、支付宝赞助码由项目作者提供并授权在仓库展示，仅用于项目赞助，不属于代码的 MIT 授权范围。
 
 第三方运行库继续遵循各自的许可证，见 THIRD-PARTY-NOTICES.md。
+
+明日方舟内置主题参考 mashirozx/arknights-ui；游戏素材来源、处理方式和原作者许可说明见 `docs/arknights/README.md`。

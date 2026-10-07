@@ -7,3 +7,5 @@
 - Public replay test fixture from s2protocol: provenance and retained MIT notice are in `ladder-test/fixtures/`.
 
 Runtime binaries are omitted from Git source and included with their notices in the Windows portable release. Logos and character theme assets are covered separately by ASSET-NOTICE.md.
+
+- Arknights UI reference by Mashiro (MIT code; game artwork retains its original rights): https://github.com/mashirozx/arknights-ui — see `docs/arknights/`.
