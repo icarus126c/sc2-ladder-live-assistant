@@ -9,4 +9,23 @@
   }
   addEventListener('keydown',event=>{if(!expanded)return;if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key==='Tab'){const buttons=[...expanded.querySelectorAll('button,a,input,select,textarea,[tabindex]')].filter(el=>!el.disabled&&el.getClientRects().length);const first=buttons[0],last=buttons.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}});addEventListener('hashchange',close);
   for(const button of document.querySelectorAll('[data-scan-today]'))button.addEventListener('click',async()=>{button.disabled=true;try{await window.AssistantActions.act('replayScan',{mode:'today'});window.AssistantActions.toast('今日录像已检查');}catch(error){window.AssistantActions.toast(error.message);}finally{button.disabled=false;}});
+  // Tutorial links reveal the exact control without changing saved settings.
+  let tutorialRoute='',navigationTicket=0;
+  const tutorialReturn=document.getElementById('tutorialReturn');
+  const tutorialDestination=document.getElementById('tutorialDestination');
+  function closeTutorialNavigation(){navigationTicket++;tutorialRoute='';tutorialReturn.hidden=true;}
+  document.getElementById('tutorialDismiss').addEventListener('click',closeTutorialNavigation);
+  addEventListener('hashchange',()=>{if(location.hash!==tutorialRoute)closeTutorialNavigation();});
+  for(const link of document.querySelectorAll('[data-guide-target]'))link.addEventListener('click',event=>{
+    if(event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
+    const target=document.getElementById(link.dataset.guideTarget);if(!target)return;
+    event.preventDefault();const ticket=++navigationTicket;tutorialRoute=link.hash;location.hash=tutorialRoute;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(ticket!==navigationTicket||location.hash!==tutorialRoute)return;
+      for(let parent=target.parentElement;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
+      tutorialReturn.hidden=false;tutorialDestination.textContent='教程导航 · '+link.textContent.replace(/[→↗]/g,'').trim();
+      target.scrollIntoView({block:'center',behavior:'instant'});target.focus({preventScroll:true});
+    }));
+  });
+
 })();

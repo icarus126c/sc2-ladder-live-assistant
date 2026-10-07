@@ -9,6 +9,7 @@
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
   views.liveinteraction={name:'直播间互动',title:'让直播间一起参与。',eyebrow:'B站联动',description:'接收礼物、计算收益，使用弹幕口令邀请观众参与抽奖。'};
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
+  views.tutorial={name:'使用教程',title:'从这里，开始你的直播。',eyebrow:'新手指南',description:'接入直播姬 / OBS，连接自己的录像与账号。每一步都能直接跳转到设置。'};
   views.sponsor={name:'赞助与合作',title:'支持下一场好比赛。',eyebrow:'AENEAS / SUPPORT',description:'支持选手、赛事与工具，也欢迎品牌合作。'};
   const frameFields=['gameFrameStyle','gameFrameAccent','gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations','gameFrameDecorationScale','gameFrameMemeText'];
   const frameNumbers=new Set(['gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameDecorationScale']);
