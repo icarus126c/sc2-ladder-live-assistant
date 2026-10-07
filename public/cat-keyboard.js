@@ -7,7 +7,7 @@
     if(needed&&!inputEvents){inputEvents=new EventSource('/api/keyboard-events');inputEvents.onmessage=e=>ingest(JSON.parse(e.data));inputEvents.onerror=()=>ingest({status:'waiting',pressed:[],sequence:'lost-'+Date.now()});}
     if(!needed&&inputEvents){inputEvents.close();inputEvents=null;ingest({status:'waiting',pressed:[],sequence:'hidden-'+Date.now()});}
   }
-  function updateLayout(){const next=(config.catView||'split')+':'+(config.catKeyboardSide||'left')+':'+(config.catCharacter||'cat')+':'+(config.catCurve!==false);if(next===layout)return;layout=next;widget.innerHTML=window.CatKeyboardTemplate.build(config);keys=[...widget.querySelectorAll('[data-cat-key]')];avatar=widget.querySelector('.cat-avatar');combo=widget.querySelector('.cat-combo');rhythm=widget.querySelector('.cat-rhythm');lastCombo=lastRhythm='';lastPose=-1;lastBusy=null;}
+  function updateLayout(){const next=(config.catView||'rear')+':'+(config.catKeyboardSide||'left')+':'+(config.catCharacter||'cat')+':'+(config.catCurve!==false);if(next===layout)return;layout=next;widget.innerHTML=window.CatKeyboardTemplate.build(config);keys=[...widget.querySelectorAll('[data-cat-key]')];avatar=widget.querySelector('.cat-avatar');combo=widget.querySelector('.cat-combo');rhythm=widget.querySelector('.cat-rhythm');lastCombo=lastRhythm='';lastPose=-1;lastBusy=null;}
   const render=(state,options={})=>{config=state.ladder.config;scene=state.scene;preview=options.preview===true;standalone=options.standalone===true;ready=true;
     updateLayout();
     widget.hidden=!preview&&(scene==='blank'||config.enabled===false||config.catEnabled!==true||(!standalone&&!(window.SceneCustomization?.allowed(config,scene,'Keyboard',scene==='game')??(scene==='game'))));

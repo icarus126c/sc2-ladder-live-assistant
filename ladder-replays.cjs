@@ -11,7 +11,7 @@ const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,in
   gameFrameEnabled:true,gameFrameStyle:'slim',gameFrameImage:'',gameFrameAccent:'#83c5b6',gameFrameThickness:3,gameFrameOpacity:90,gameFrameScale:100,gameFrameX:0,gameFrameY:0,
   gameFrameMinimap:true,gameFrameSelection:true,gameFramePortrait:true,gameFrameCommands:true,
   gameFrameDecorations:true,gameFrameDecorationScale:100,gameFrameMemeText:'优势在我！',
-  catEnabled:false,catView:'split',catCharacter:'cat',catFrontImage:'',catRearImage:'',catCurve:true,catKeyboardSide:'left',catX:1400,catY:320,catWidth:460,catOpacity:100,catAccent:'#f2a7d5',catHold:300,catHints:true,
+  catEnabled:false,catView:'rear',catCharacter:'cat',catFrontImage:'',catRearImage:'',catCurve:true,catKeyboardSide:'left',catX:1400,catY:320,catWidth:460,catOpacity:100,catAccent:'#f2a7d5',catHold:300,catHints:true,
   catLetters:true,catNumbers:true,catFunctions:true,catModifiers:true,catNavigation:true,catMouse:true,catChatGuard:true};
 const validMMR=n=>Number.isInteger(n)&&n>0&&n<=20000;
 const race=r=>({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R',Terr:'T',Prot:'P'})[r]||r;

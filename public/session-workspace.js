@@ -4,13 +4,15 @@
   function render(state,connected){
     const ladder=state.ladder,session=ladder.session,c=ladder.config;
     if(!session)return;
-    $('streamSummary').textContent=`${session.running?'本场进行中':'本场已结束'} · ${session.stats.wins} 胜 ${session.stats.losses} 负`;
+    $('streamSummary').textContent=`${session.stats.wins} 胜 ${session.stats.losses} 负${session.running?'':' · 已结束'}`;
     $('streamToday').textContent=`今日 ${ladder.stats.wins} 胜 ${ladder.stats.losses} 负 · ${ladder.date}（北京时间）`;
     $('streamBoundary').textContent='开始：'+stamp(session.startedAt)+(session.endedAt?' · 结束：'+stamp(session.endedAt):'');
-    $('streamResume').hidden=!session.resumeAvailable;
-    $('streamResume').textContent='继续上一场（'+stamp(session.previousStartedAt)+'）';
+    $('streamResume').hidden=false;
+    $('streamResume').textContent='恢复上一场';
+    $('streamResume').title=session.resumeAvailable?'继续从 '+stamp(session.previousStartedAt)+' 开始的直播统计':'暂无可恢复的上一场；重启后可继续未结束的直播';
     for(const id of ['streamStart','streamEnd','streamResume','diagnose','diagnosticScan','dataBackup'])$(id).disabled=!connected;
     $('streamEnd').disabled=!connected||!session.running;
+    $('streamResume').disabled=!connected||!session.resumeAvailable;
     const key=JSON.stringify([state.diagnostics,state.recovery,c.toonHandle,c.names,c.replayDirectory,c.enabled,c.autoTrack,ladder.pending.length,ladder.mmrMessage,state.replays.errors,state.replays.lastScanAt,state.automation.phase]);
     if(key!==diagnosticKey){
       diagnosticKey=key;
@@ -27,7 +29,7 @@
       $('diagnosticTime').textContent=(state.diagnostics?'诊断快照：'+stamp(state.diagnostics.at)+' · 设置改变后可重新诊断。':'点击一键诊断检查目录与账号是否对应。')+' 最近扫描：'+stamp(state.replays.lastScanAt);
       $('dataRecovery').replaceChildren();
       for(const warning of state.recovery||[]){const p=document.createElement('p');p.className='recovery-warning';p.textContent=warning.file+'：'+warning.message;$('dataRecovery').append(p);}
-      if(state.recovery?.length)$('diagnosticPanel').open=true;
+      if(state.recovery?.length){$('diagnosticPanel').open=true;$('sessionMore').open=true;}
     }
     if(state.lastBackup)$('dataBackupStatus').textContent='已备份 '+state.lastBackup.files+' 个数据文件 · '+state.lastBackup.path;
   }

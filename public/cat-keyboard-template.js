@@ -34,6 +34,7 @@
   const mouse=()=>`<div class="cat-mouse"><span data-cat-key="Mouse1">L</span><span data-cat-key="Mouse2">R</span><i></i></div>`;
   const caption=()=>`<div class="cat-caption" aria-live="off"><b class="cat-combo">准备好啦</b><small class="cat-rhythm">喵 · 等待按键</small></div>`;
   function buildBase(c={}){
+    c={catView:'rear',...c};
     if(c.catView==='classic')return `<div class="cat-stage cat-classic"><div class="cat-avatar" role="img" aria-label="敲键盘的猫娘" data-pose="0"></div><div class="cat-board-angle"><div class="cat-board"><div class="cat-main-keys">${renderRows(rows)}</div>${navigation()}</div>${mouse()}</div>${caption()}<div class="cat-spark cat-spark-left">✧</div><div class="cat-spark cat-spark-right">✦</div></div>`;
     const side=c.catKeyboardSide==='right'?'right':'left';
     if(c.catView==='flat')return `<div class="cat-stage cat-split cat-flat" data-keyboard-side="${side}"><div class="cat-keyboard-view"><span class="cat-side-label">${side==='right'?'右半键盘':'左半键盘'}</span><div class="cat-board-angle"><div class="cat-board"><div class="cat-main-keys">${renderRows(halfRows[side])}</div>${side==='right'?navigation():''}</div>${mouse()}</div></div>${caption()}</div>`;

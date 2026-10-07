@@ -3,7 +3,7 @@ const {createReplayStore,sanitize,defaults}=require('../ladder-replays.cjs'),{cr
 function worker(){const w=new EventEmitter();w.stdout=new PassThrough();w.stderr=new PassThrough();w.killed=false;w.kill=()=>w.killed=true;return w;}
 test('cat settings persist independently, and reject invalid sizes, colors and switches',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cat-settings-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'records.json'),store=createReplayStore(file);store.add('win');store.updateMMR(4600);
-  assert.equal(defaults.catView,'split');assert.equal(defaults.catKeyboardSide,'left');
+  assert.equal(defaults.catView,'rear');assert.equal((template.build().match(/class="cat-board"/g)||[]).length,1);assert.equal(defaults.catKeyboardSide,'left');
   store.configure({catEnabled:true,catView:'classic',catKeyboardSide:'right',catWidth:520,catHold:500,catX:30,catFunctions:false,scoreboardEnabled:false,showHUD:false});const saved=createReplayStore(file).snapshot();
   assert.equal(saved.config.catView,'classic');assert.equal(saved.config.catKeyboardSide,'right');
   assert.equal(saved.config.catWidth,520);assert.equal(saved.config.catFunctions,false);assert.equal(saved.config.catEnabled,true);assert.equal(saved.stats.wins,1);assert.equal(saved.config.mmr,4600);assert.equal(saved.config.showHUD,false);assert.equal(saved.config.scoreboardEnabled,false);
@@ -33,7 +33,7 @@ test('all capture keys have a visible keyboard key or mouse button, and mascot P
   const png=fs.readFileSync(path.join(__dirname,'../public/assets/cat-keyboard-v2.png'));assert.equal(png[25],6);assert.equal(png.readUInt32BE(16),png.readUInt32BE(20)*3,'three equal square animation cells');
 });
 test('split views show the selected half, preserve all keys across the pair and keep hidden-key motion',()=>{
-  const left=template.build(),right=template.build({catKeyboardSide:'right'}),classic=template.build({catView:'classic',catKeyboardSide:'right'}),keys=html=>new Set([...html.matchAll(/data-cat-key="([^"]+)"/g)].map(m=>m[1]));
+  const left=template.build({catView:'split'}),right=template.build({catView:'split',catKeyboardSide:'right'}),classic=template.build({catView:'classic',catKeyboardSide:'right'}),keys=html=>new Set([...html.matchAll(/data-cat-key="([^"]+)"/g)].map(m=>m[1]));
   const l=keys(left),r=keys(right);assert.match(left,/cat-split/);assert.match(left,/cat-touchboard/);assert.ok(l.has('Q'));assert.ok(!l.has('L'));assert.ok(r.has('L'));assert.ok(!r.has('Q'));assert.ok(r.has('Left'));assert.ok(r.has('PageUp'));for(const k of keyList)assert.ok(l.has(k)||r.has(k),'Missing half key: '+k);assert.match(classic,/cat-classic/);assert.ok(keys(classic).has('Q'));assert.ok(keys(classic).has('L'));
   const model=template.createModel({now:()=>1000}),c={catView:'split',catKeyboardSide:'left',catHold:300};model.ingest({status:'active',pressed:['CtrlRight','L'],sequence:1},c);const s=model.snapshot(c);assert.ok(s.pressed.includes('L'));assert.equal(s.combo,'Ctrl + L');assert.ok(s.rate>0);assert.ok(s.pose>0);
 });
