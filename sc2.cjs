@@ -60,7 +60,8 @@ class AutomationEngine {
       result.message = playing ? '正在确认比赛开始' : '已离开比赛，等待局间转场'; return result;
     }
     if (busy) { result.message = '等待当前转场完成'; return result; }
-    if (!['opening', 'game', 'loading', 'intermission'].includes(scene)) { result.message = '暂离 / 结束画面保留，请恢复自动切换'; return result; }
+    // Manual scenes are protected by sc2AutoPaused above; resuming must release them.
+    if (!['opening', 'game', 'loading', 'intermission', 'break', 'blank'].includes(scene)) { result.message = '等待可自动切换的场景'; return result; }
     if (playing) this.seenLive = true;
     if (scene === candidate) { if (phase === 'menu') this.seenLive = false; result.message = playing ? '比赛画面已同步' : '局间画面已同步'; return result; }
     result.target = candidate;

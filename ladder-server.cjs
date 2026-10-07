@@ -5,6 +5,7 @@ const gameFrame=require('./public/gameframe-template.js');
 const sceneMedia=require('./scene-media.cjs');
 const outfitPresets=require('./public/outfit-presets.js');
 const {createStylePackStore}=require('./style-packs.cjs');
+const {createStyleImageService,readLimited}=require('./style-image-service.cjs'),styleImageLayout=require('./style-image-layout.cjs');
 const {createInteractionStore,normalizeBiliEvent}=require('./live-interactions.cjs'),{createBilibiliClient}=require('./bilibili-live.cjs');
 const {createKeyboardInput}=require('./keyboard-input.cjs');
 const {createReplayStore}=require('./ladder-replays.cjs'),{createReplayWatcher}=require('./replay-watcher.cjs'),{createSc2Monitor}=require('./sc2.cjs');
@@ -15,16 +16,16 @@ function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array
   if(input.obsMapping){for(const k of ['game','intermission','loading','break','blank'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
   return c;
 }
-function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
-  const token=crypto.randomBytes(24).toString('hex'),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
+function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={},imageOptions={}}={}){
+  const token=crypto.randomBytes(24).toString('hex'),serverInstanceId=crypto.randomUUID(),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
   let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null;
   const canUndoOutfit=()=>!!lastOutfit&&Object.entries(lastOutfit.after).every(([k,v])=>ladder.getConfig()[k]===v);
   if(settings&&fs.existsSync(settings))config=sanitize(JSON.parse(fs.readFileSync(settings,'utf8')));
   const ladder=createReplayStore(dataDir?path.join(dataDir,'records.json'):null,now);
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
-  const stylePacks=createStylePackStore(dataDir);
+  const stylePacks=createStylePackStore(dataDir),styleImages=createStyleImageService(imageOptions);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.3.5',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:'2.3.5',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
   const broadcast=()=>{revision++;for(const res of clients)res.write(`data: ${JSON.stringify(snapshot())}\n\n`);};
   function persist(){if(!settings)return;fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(settings+'.tmp',JSON.stringify(config,null,2));fs.renameSync(settings+'.tmp',settings);}
   const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
@@ -36,16 +37,20 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const routes={'/':'ladder.html','/assistant':'ladder.html','/assistant.js':'ladder-ui.js','/assistant.css':'assistant.css','/workspace.js':'workspace.js','/workspace.css':'workspace.css','/cat-workspace.js':'cat-workspace.js','/cat-keyboard':'cat-keyboard.html','/cat-keyboard-template.js':'cat-keyboard-template.js','/cat-keyboard.js':'cat-keyboard.js','/cat-keyboard.css':'cat-keyboard.css','/assets/cat-keyboard-v2.png':'assets/cat-keyboard-v2.png','/assets/cat-keyboard-rear-v1.png':'assets/cat-keyboard-rear-v1.png','/gameframe':'gameframe.html','/gameframe-template.js':'gameframe-template.js','/gameframe.js':'gameframe.js','/gameframe.css':'gameframe.css','/scoreboard':'scoreboard.html','/scoreboard.js':'scoreboard.js','/scoreboard.css':'scoreboard.css','/output':'ladder-output.html','/ladder-output.js':'ladder-output.js','/ladder-output.css':'ladder-output.css','/ladder-overlay.js':'ladder-overlay.js','/ladder-overlay.css':'ladder-overlay.css','/obs.js':'obs.js','/favicon.svg':'favicon.svg','/assets/cnzs-logo.png':'assets/cnzs-logo.png','/assets/bluegold-logo.png':'assets/bluegold-logo.png','/assets/nailong-meme-v1.png':'assets/nailong-meme-v1.png'};
   for(const file of ['scene-themes.js','scene-themes.css','scene-workspace.js','scene-video.js','usage-ui.js','usage-ui.css','outfit-presets.js','outfit-workspace.js','outfit-workspace.css','live-workspace.js','live-workspace.css','live-overlay.js','live-overlay.css'])routes['/'+file]=file;
   for(const file of ['nahida-keys-v1.png','vesna-keys-v1.png','naiwa-keys-v1.png','nahida-frame-v1.png','starcraft-scene-v1.png'])routes['/assets/'+file]='assets/'+file;
-  for(const f of ['nicole-frame-v1.png','nicole-keys-v1.png','nicole-waiting-v1.png','nicole-away-v1.png'])routes['/assets/'+f]='assets/'+f;
+  for(const f of ['arknights-logo-v1.png','arknights-chen-v1.png','arknights-background-v1.png','arknights-cover-v1.png','nicole-frame-v1.png','nicole-keys-v1.png','nicole-waiting-v1.png','nicole-away-v1.png'])routes['/assets/'+f]='assets/'+f;
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
   routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
   for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
-  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js'])routes['/'+file]=file;
+  for(const file of ['style-image-spec.js','style-image-workspace.js','style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js','control-connection.js'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
     const actual=server.address()?.port||port,hosts=[`127.0.0.1:${actual}`,`localhost:${actual}`];res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
     const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));};
     if(!hosts.includes(req.headers.host))return json(403,{error:'仅支持本机访问'});
     try{const url=new URL(req.url,`http://127.0.0.1:${actual}`);
+      if(req.method==='GET'&&url.pathname==='/api/control-session'){
+        if(req.headers['x-control-client']!=='assistant'||req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手恢复连接'});
+        return json(200,{token,serverInstanceId});
+      }
       if(req.method==='GET'&&url.pathname==='/api/live-export'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手导出'});
         const kind=url.searchParams.get('kind'),content=interactions.exportCSV(kind);res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Bilibili-'+(kind==='income'?'Income':'Winners')+'.csv"'});return res.end(content);
@@ -54,6 +59,15 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
       if(req.method==='GET'&&url.pathname==='/api/style-pack-export'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手导出'});
         const pack=stylePacks.exportPack(url.searchParams.get('id'));res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Content-Disposition':`attachment; filename="${pack.id}.sc2style.json"`});return res.end(JSON.stringify(pack,null,2));
+      }
+      if(req.method==='GET'&&url.pathname==='/api/style-image/template'){
+        const role=url.searchParams.get('role'),bytes=styleImageLayout.guide(role);res.writeHead(200,{'Content-Type':'image/png','Content-Disposition':`attachment; filename="style-template-${role}.png"`});return res.end(bytes);
+      }
+      if(req.method==='POST'&&url.pathname==='/api/style-image/generate'){
+        if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手生成素材'});
+        const input=JSON.parse((await readLimited(req,7*1024*1024)).toString('utf8')),abort=new AbortController();
+        const disconnected=()=>{if(!res.writableEnded)abort.abort();};res.on('close',disconnected);
+        try{return json(200,await styleImages.generate(input,{signal:abort.signal}));}finally{res.off('close',disconnected);}
       }
       if(req.method==='POST'&&url.pathname==='/api/style-pack-install'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手安装'});
@@ -69,7 +83,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手操作'});
         if(!dataDir)throw Error('未配置媒体保存目录');return json(200,await sceneMedia.saveUpload(req,path.join(dataDir,'media')));
       }
-      if(req.method==='GET'&&url.pathname==='/gameframe.svg'){const c=ladder.getConfig(),assets={};for(const [key,file]of Object.entries({nailong:'nailong-meme-v1.png',anes:'bluegold-logo.png',naiwa:'naiwa-keys-v1.png',nahida:'nahida-frame-v1.png',vesna:'vesna-keys-v1.png',nicole:'nicole-frame-v1.png'}))if(c.gameFrameStyle===key)assets[key]='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'public','assets',file)).toString('base64');if(c.gameFrameStyle==='custom'){const f=stylePacks.assetFile(c.gameFrameImage);if(f&&fs.existsSync(f))assets.customFrame='data:image/png;base64,'+fs.readFileSync(f).toString('base64');}res.writeHead(200,{'Content-Type':'image/svg+xml','Content-Disposition':'attachment; filename="SC2-Console-Frame.svg"'});return res.end(gameFrame.build(c,{assets}));}
+      if(req.method==='GET'&&url.pathname==='/gameframe.svg'){const c=ladder.getConfig(),assets={};for(const [key,file]of Object.entries({arknights:'arknights-logo-v1.png',nailong:'nailong-meme-v1.png',anes:'bluegold-logo.png',naiwa:'naiwa-keys-v1.png',nahida:'nahida-frame-v1.png',vesna:'vesna-keys-v1.png',nicole:'nicole-frame-v1.png'}))if(c.gameFrameStyle===key)assets[key]='data:image/png;base64,'+fs.readFileSync(path.join(__dirname,'public','assets',file)).toString('base64');if(c.gameFrameStyle==='custom'){const f=stylePacks.assetFile(c.gameFrameImage);if(f&&fs.existsSync(f))assets.customFrame='data:image/png;base64,'+fs.readFileSync(f).toString('base64');}res.writeHead(200,{'Content-Type':'image/svg+xml','Content-Disposition':'attachment; filename="SC2-Console-Frame.svg"'});return res.end(gameFrame.build(c,{assets}));}
       if(req.method==='GET'&&url.pathname==='/frame-reference.png'){const localReference=path.join(__dirname,'work','control-reference.png'),reference=fs.existsSync(localReference)?localReference:path.join(__dirname,'public','assets','control-reference.png');if(!fs.existsSync(reference))return json(404,{error:'预览参考图未提供'});res.writeHead(200,{'Content-Type':'image/png'});return res.end(fs.readFileSync(reference));}
       if(req.method==='GET'&&url.pathname==='/api/events'){res.writeHead(200,{'Content-Type':'text/event-stream','Connection':'keep-alive'});clients.add(res);res.write(`retry: 1000\ndata: ${JSON.stringify(snapshot())}\n\n`);req.on('close',()=>clients.delete(res));return;}
       if(req.method==='GET'&&url.pathname==='/api/keyboard-events'){res.writeHead(200,{'Content-Type':'text/event-stream','Connection':'keep-alive'});keyboardClients.add(res);res.write(`retry: 1000\ndata: ${JSON.stringify(keyboard.snapshot())}\n\n`);req.on('close',()=>keyboardClients.delete(res));return;}
@@ -130,7 +144,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
     }catch(error){json(400,{error:error.message});}
   });
   const heartbeat=setInterval(()=>{for(const res of [...clients,...keyboardClients])res.write(': heartbeat\n\n');},15000);heartbeat.unref();keyboard.configure();
-  return{server,snapshot,ladder,watcher,sc2,keyboard,interactions,bili,close(){clearInterval(liveTicker);if(liveUpdateTimer)clearTimeout(liveUpdateTimer);bili.close();clearInterval(heartbeat);watcher.close();sc2.close();keyboard.close();for(const r of [...clients,...keyboardClients])r.end();server.close();server.closeAllConnections?.();}};
+  return{server,snapshot,ladder,watcher,sc2,keyboard,interactions,bili,close(){styleImages.close();clearInterval(liveTicker);if(liveUpdateTimer)clearTimeout(liveUpdateTimer);bili.close();clearInterval(heartbeat);watcher.close();sc2.close();keyboard.close();for(const r of [...clients,...keyboardClients])r.end();server.close();server.closeAllConnections?.();}};
 }
 if(require.main===module){
   const port=Number(process.env.SC2_LADDER_PORT||17864);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('天梯服务端口无效');

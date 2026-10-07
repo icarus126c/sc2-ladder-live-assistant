@@ -9,7 +9,7 @@ function normalize(input){
  exact(input,['format','version','id','name','note','base','palette','templates','assets'],'风格包');
  if(input.format!=='sc2-style-pack'||input.version!==1)throw Error('支持 sc2-style-pack 第1版风格包');
  if(typeof input.id!=='string'||!/^[a-z][a-z0-9-]{2,47}$/.test(input.id)||input.id.startsWith('user-'))throw Error('风格ID需为3～48位小写字母、数字或短横线，以字母开头');
- if(!['anes','starcraft','naiwa','nahida','vesna'].includes(input.base))throw Error('请选择有效的基础风格');
+ if(!['anes','starcraft','naiwa','nahida','vesna','arknights'].includes(input.base))throw Error('请选择有效的基础风格');
  exact(input.palette,['dark','mid','accent','text'],'配色');
  for(const key of ['dark','mid','accent','text'])if(typeof input.palette[key]!=='string'||!/^#[a-f\d]{6}$/i.test(input.palette[key]))throw Error('配色需要四个完整的六位十六进制颜色');
  const templates=input.templates||{};exact(templates,['score','hud'],'模板');

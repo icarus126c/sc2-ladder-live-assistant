@@ -2,6 +2,7 @@
   const modules={gameframe:'游戏边框',catkeyboard:'按键小助手',scoreboard:'战绩计分器',overlay:'信息栏',waiting:'等待画面',break:'暂离画面'};
   const presets={
     anes:{name:'ANES · 蓝金主场',note:'战队队标、蓝金边框与同色猫娘键帽',scene:'team',frame:'anes',cat:'cat',accent:'#e6bc5c',score:'bluegold',hud:'bluegold',colors:['#081526','#203d64','#e6bc5c']},
+    arknights:{name:'明日方舟 · 罗德岛终端',note:'罗德岛标识、陈的立绘与黑白黄作战界面',scene:'arknights',frame:'arknights',cat:'arknights',accent:'#f5c928',score:'compact',hud:'compact',colors:['#14191e','#42484d','#f5c928'],assets:{cover:'/assets/arknights-cover-v1.png'}},
     starcraft:{name:'星际 · 深空指挥',note:'深空背景、轻量窄框与冰蓝猫娘键帽',scene:'starcraft',frame:'slim',cat:'cat',accent:'#74d9ed',score:'dual',hud:'compact',colors:['#07111d','#183c5c','#74d9ed']},
     naiwa:{name:'奶蛙 · 呱呱出击',note:'人形奶蛙、恶搞边框与黄绿舞台',scene:'naiwa',frame:'naiwa',cat:'naiwa',accent:'#efd253',score:'dual',hud:'compact',colors:['#1c210c','#535a21','#f2d34f']},
     nahida:{name:'纳西妲 · 叶间微光',note:'纳西妲助手、叶饰边框与柔绿舞台',scene:'nahida',frame:'nahida',cat:'nahida',accent:'#c5dc8e',score:'compact',hud:'compact',colors:['#10251e','#3e6345','#c5dc8e']},
