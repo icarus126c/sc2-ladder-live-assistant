@@ -33,3 +33,14 @@ test('multiple accounts require a choice; discovery fills a draft and uses the e
  vm.runInNewContext(fs.readFileSync(require.resolve('../public/identity-workspace.js'),'utf8'),{window:win,document:{getElementById:node,createElement:()=>({})},Event:class{}});
  await node('detectIdentity').click();assert.equal(node('toonHandle').value,'');assert.equal(calls.length,1);node('detectedAccounts').value='1';await node('detectedAccounts').change();assert.equal(node('toonHandle').value,'3-S2-1-456');assert.equal(node('playerNames').value,'Me');assert.equal(win.IdentityDiscovery.directory(),'two');assert.equal(node('identityForm').dirty,true);assert.equal(calls.length,2,'No configuration write during discovery');win.IdentityDiscovery.saved();assert.equal(win.IdentityDiscovery.directory(),'');
 });
+
+test('switch button never reselects the old account and drafts the new ID and directory together',async()=>{
+ const nodes=new Map(),calls=[];function node(id){if(!nodes.has(id))nodes.set(id,{value:'',textContent:'',children:[],hidden:false,addEventListener(type,fn){this[type]=fn;},replaceChildren(){this.children=[];},append(value){this.children.push(value);},dispatchEvent(){this.dirty=true;}});return nodes.get(id);}
+ const candidates=[{toonHandle:'5-S2-1-123',replayDirectory:'old'},{toonHandle:'3-S2-1-456',replayDirectory:'new'}],location={hash:'console'};node('toonHandle').value='5-S2-1-123';
+ const win={AssistantActions:{toast(){},async act(action,input){calls.push({action,input});return action==='identityDetect'?{candidates,message:'choose'}:{...candidates[1],names:['New'],race:'Z',message:'draft'};}}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/identity-workspace.js'),'utf8'),{window:win,document:{getElementById:node,createElement:()=>({})},location,Event:class{}});
+ await node('switchIdentityQuick').click();assert.equal(location.hash,'settings');assert.equal(node('detectedAccounts').value,'');assert.equal(calls.length,1);assert.equal(node('toonHandle').value,'5-S2-1-123');assert.equal(win.IdentityDiscovery.directory(),'');
+ node('detectedAccounts').value='1';await node('detectedAccounts').change();assert.equal(node('toonHandle').value,'3-S2-1-456');assert.equal(win.IdentityDiscovery.directory(),'new');assert.equal(calls.length,2);
+ node('toonHandle').value='5-S2-1-123';assert.equal(win.IdentityDiscovery.directory(),'','stale directory cannot accompany a manually changed ID');
+ await node('switchIdentity').click();assert.equal(win.IdentityDiscovery.directory(),'');assert.equal(calls.length,3);
+});

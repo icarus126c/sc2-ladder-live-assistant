@@ -110,7 +110,8 @@ function createReplayStore(file=null,now=Date.now){
     const matchKey=crypto.createHash('sha256').update(JSON.stringify([p.at,p.durationSeconds,p.map,p.players.map(x=>x.toonHandle).sort()])).digest('hex'),key=identity()+':'+matchKey,hashKey=identity()+':'+hash;
     if(seen[key]||seen[hashKey]){const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,metricsOpponent):false;if(previous&&(!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}if(changed)persist();return{kind:'duplicate',message:'已处理过这盘录像，统计已核对'};}
     const result=p.selfResult==='W'?'win':'loss';
-    const candidates=records.filter(r=>r.identity===identity()&&r.source==='manual'&&!r.replayKey&&(Math.abs(r.at-p.at)<=120000||(r.startedAt&&p.durationSeconds&&Math.abs(r.startedAt-(p.at-p.durationSeconds*1000))<=15000))&&(r.opponent==='手动记录'||r.opponent===op.name));
+    const replayStart=Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.at-p.durationSeconds*1000:null;
+    const candidates=records.filter(r=>r.identity===identity()&&r.source==='manual'&&!r.replayKey&&((Math.abs(r.at-p.at)<=120000&&(replayStart===null||r.at>=replayStart-15000))||(Number.isFinite(r.startedAt)&&replayStart!==null&&Math.abs(r.startedAt-replayStart)<=15000))&&(r.opponent==='手动记录'||r.opponent===op.name));
     let r=recordId?records.find(r=>r.id===recordId&&r.identity===identity()&&!r.replayKey):null;
     if(recordId&&!r)throw Error('关联的手动记录不存在或已绑定录像');
     if(!r&&!newRecord&&candidates.length===1)r=candidates[0];
