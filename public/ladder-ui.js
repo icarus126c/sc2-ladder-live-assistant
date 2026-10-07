@@ -1,11 +1,11 @@
 (() => {
-  const $=id=>document.getElementById(id),token=document.querySelector('meta[name="control-token"]').content;
+  const $=id=>document.getElementById(id);
   let state,connected=false,identityDirty=false,styleDirty=false,recordKey='',toastTimer,obsDesired='',obsApplied='',obsBusy=false;
   const styleFields={hudTemplate:'template',hudTitle:'title',hudX:'x',hudY:'y',hudWidth:'width',hudScale:'scale',hudFont:'fontSize',hudOpacity:'opacity',hudAccent:'accent',hudText:'text'};
   const appearanceKeys=['template','x','y','width','scale','fontSize','opacity','accent','title','text','showName','showMMR','showRecord','showWinrate','showStreak','showDelta','showHUD'];
   const obs=new ObsConnection((message,error)=>{$('obsStatus').textContent=message;if(typeof window!=='undefined')window.Workspace?.obsStatus(obs.ready);if(!obs.ready){$('obsConnect').textContent='连接OBS';obsApplied='';} });
   function toast(text){$('toast').textContent=text;$('toast').className='show';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').className='',3500);}
-  async function act(action,extra={}) {const r=await fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Control-Token':token},body:JSON.stringify({action,...extra})});const value=await r.json();if(!r.ok)throw new Error(value.error||'操作失败');if(value.config)render(value);return value;}
+  async function act(action,extra={}) {const r=await control.request('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,...extra})});const value=await r.json();if(!r.ok)throw new Error(value.error||'操作失败');if(value.config)render(value);return value;}
   const guarded=fn=>async e=>{try{await fn(e);}catch(error){toast(error.message);}};
   async function syncOBS(){if(obsBusy||!obs.ready||!obsDesired||obsDesired===obsApplied)return;obsBusy=true;try{const target=obsDesired;await obs.request('SetCurrentProgramScene',{sceneName:target});obsApplied=target;}catch(error){$('obsStatus').textContent=error.message;obsDesired='';}finally{obsBusy=false;if(obsDesired&&obsDesired!==obsApplied)syncOBS();}}
   function render(next){
@@ -73,6 +73,9 @@ async function manualRecord(result){const extra={result,opponent:$('manualOppone
 $('mmrMode').addEventListener('change',guarded(()=>act('ladderConfigure',{config:{mmrMode:$('mmrMode').value}})));
 $('replayForm').addEventListener('submit',guarded(async e=>{e.preventDefault();await act('ladderConfigure',{config:{replayDirectory:$('replayDirectory').value}});toast('录像目录已保存');}));
 for(const [id,mode]of [['scanToday','today'],['scanRecent','recent']])$(id).addEventListener('click',guarded(()=>act('replayScan',{mode})));
-  if(typeof window!=='undefined')window.AssistantActions={act,toast};
-  const events=new EventSource('/api/events?role=control');events.onopen=()=>{connected=true;$('connection').textContent='本机已连接';if(typeof window!=='undefined')window.Workspace?.connection(true);if(state)render(state);};events.onmessage=e=>{try{render(JSON.parse(e.data));}catch(error){console.error(error);toast('状态同步失败，请确认已启动新版工具');}};events.onerror=()=>{connected=false;$('connection').textContent='连接中断，正在重连';if(typeof window!=='undefined')window.Workspace?.connection(false);if(state)render(state);};
+  const control=window.ControlConnection.create({fetchImpl:fetch,EventSourceImpl:EventSource,onState:render,
+    onToken:value=>{document.querySelector('meta[name="control-token"]').content=value;},
+    onStatus:(value,message)=>{connected=value;$('connection').textContent=message;window.Workspace?.connection(value);if(state)render(state);}
+  });
+  window.AssistantActions={act,toast,request:control.request};
 })();

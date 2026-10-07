@@ -16,7 +16,7 @@ function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array
   return c;
 }
 function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
-  const token=crypto.randomBytes(24).toString('hex'),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
+  const token=crypto.randomBytes(24).toString('hex'),serverInstanceId=crypto.randomUUID(),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
   let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null;
   const canUndoOutfit=()=>!!lastOutfit&&Object.entries(lastOutfit.after).every(([k,v])=>ladder.getConfig()[k]===v);
   if(settings&&fs.existsSync(settings))config=sanitize(JSON.parse(fs.readFileSync(settings,'utf8')));
@@ -24,7 +24,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
   const stylePacks=createStylePackStore(dataDir);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,appVersion:'2.3.5',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:'2.3.5',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
   const broadcast=()=>{revision++;for(const res of clients)res.write(`data: ${JSON.stringify(snapshot())}\n\n`);};
   function persist(){if(!settings)return;fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(settings+'.tmp',JSON.stringify(config,null,2));fs.renameSync(settings+'.tmp',settings);}
   const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
@@ -40,12 +40,16 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
   routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
   for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
-  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js'])routes['/'+file]=file;
+  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js','control-connection.js'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
     const actual=server.address()?.port||port,hosts=[`127.0.0.1:${actual}`,`localhost:${actual}`];res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
     const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));};
     if(!hosts.includes(req.headers.host))return json(403,{error:'仅支持本机访问'});
     try{const url=new URL(req.url,`http://127.0.0.1:${actual}`);
+      if(req.method==='GET'&&url.pathname==='/api/control-session'){
+        if(req.headers['x-control-client']!=='assistant'||req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手恢复连接'});
+        return json(200,{token,serverInstanceId});
+      }
       if(req.method==='GET'&&url.pathname==='/api/live-export'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手导出'});
         const kind=url.searchParams.get('kind'),content=interactions.exportCSV(kind);res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Bilibili-'+(kind==='income'?'Income':'Winners')+'.csv"'});return res.end(content);
