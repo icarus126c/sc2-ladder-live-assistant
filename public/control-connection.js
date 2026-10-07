@@ -70,10 +70,17 @@
       streamOpen = true;
       void refresh().catch(() => {});
     };
+    function adopt(value) {
+      if (!value || typeof value.serverInstanceId !== 'string') return value;
+      if (latestState?.serverInstanceId === value.serverInstanceId && Number.isInteger(latestState.revision) && Number.isInteger(value.revision) && value.revision < latestState.revision) return latestState;
+      latestState = value;
+      return value;
+    }
     events.onmessage = event => {
       if (closed || !streamOpen) return;
       try {
-        latestState = JSON.parse(event.data);
+        const incoming = JSON.parse(event.data);
+        if (adopt(incoming) !== incoming) return;
         if (!latestState || typeof latestState.serverInstanceId !== 'string') throw Error('状态格式错误');
         if (session && session.serverInstanceId === latestState.serverInstanceId) updateReady();
         else if (!refreshJob && retryTimer === null) void refresh().catch(() => {});
@@ -100,6 +107,10 @@
           assertResponseCurrent(epoch, instance);
           const result = await value.apply(target, args);
           assertResponseCurrent(epoch, instance);
+          if (key === 'json') {
+            if (result?.serverInstanceId) {if(result.serverInstanceId !== instance) throw Error('服务已变化，已忽略旧响应');return adopt(result);}
+            if (result?.state?.serverInstanceId) {if(result.state.serverInstanceId !== instance) throw Error('服务已变化，已忽略旧响应');return {...result, state: adopt(result.state)};}
+          }
           return result;
         };
         if (key === 'clone' && typeof value === 'function') return () => {

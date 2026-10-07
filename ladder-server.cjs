@@ -1,3 +1,4 @@
+const storage=require('./data-storage.cjs');
 const {createCombinationStore}=require('./outfit-combinations.cjs');
 const {discoverAccounts,inspectAccount}=require('./account-discovery.cjs');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
@@ -17,16 +18,16 @@ function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array
 }
 function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
   const token=crypto.randomBytes(24).toString('hex'),serverInstanceId=crypto.randomUUID(),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
-  let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null;
+  let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null,diagnostics=null,lastBackup=null;
   const canUndoOutfit=()=>!!lastOutfit&&Object.entries(lastOutfit.after).every(([k,v])=>ladder.getConfig()[k]===v);
-  if(settings&&fs.existsSync(settings))config=sanitize(JSON.parse(fs.readFileSync(settings,'utf8')));
+  config=sanitize(storage.readJSON(settings,defaults,sanitize));
   const ladder=createReplayStore(dataDir?path.join(dataDir,'records.json'):null,now);
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
   const stylePacks=createStylePackStore(dataDir);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:'2.3.6',stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
-  const broadcast=()=>{revision++;for(const res of clients)res.write(`data: ${JSON.stringify(snapshot())}\n\n`);};
-  function persist(){if(!settings)return;fs.mkdirSync(dataDir,{recursive:true});fs.writeFileSync(settings+'.tmp',JSON.stringify(config,null,2));fs.renameSync(settings+'.tmp',settings);}
+  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:'2.4.0',diagnostics,recovery:storage.recoveryWarnings(dataDir),lastBackup,stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const broadcast=()=>{revision++;if(!clients.size)return;const message=`data: ${JSON.stringify(snapshot())}\n\n`;for(const res of clients)res.write(message);};
+  function persist(){if(!settings)return;storage.writeJSON(settings,config);}
   const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
   const watcher=createReplayWatcher({store:ladder,onUpdate:broadcast,parser,now,intervalMs});
   let liveUpdateTimer=null;const queueLiveUpdate=()=>{if(!liveUpdateTimer){liveUpdateTimer=setTimeout(()=>{liveUpdateTimer=null;broadcast();},300);liveUpdateTimer.unref();}};
@@ -40,7 +41,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
   routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
   for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
-  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js','control-connection.js'])routes['/'+file]=file;
+  for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js','control-connection.js','session-workspace.js'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
     const actual=server.address()?.port||port,hosts=[`127.0.0.1:${actual}`,`localhost:${actual}`];res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
     const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));};
@@ -94,6 +95,23 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手操作'});
         const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>50000)throw Error('请求过大');chunks.push(chunk);}const i=JSON.parse(Buffer.concat(chunks).toString('utf8'));
         switch(i.action){
+          case'streamStart':ladder.startSession();watcher.configure();break;
+          case'streamEnd':ladder.endSession();watcher.configure();break;
+          case'streamResume':ladder.resumeSession();watcher.configure();break;
+          case'dataBackup':ladder.flush();lastBackup=storage.backupData(dataDir);break;
+          case'diagnose':{
+            await sc2.poll();const c=ladder.getConfig(),checks=[];
+            const check=(name,ok,message)=>checks.push({name,ok,message});
+            const folder=c.replayDirectory.match(/(?:^|[\\/])(\d+-S2-\d+-\d+)(?:[\\/]|$)/)?.[1];
+            check('游戏身份',!!(c.toonHandle||c.names.length||folder),c.toonHandle||c.names.join('、')||folder||'尚未确认，请更换身份或自动识别');
+            try{if(!c.replayDirectory||!fs.statSync(c.replayDirectory).isDirectory())throw Error();fs.accessSync(c.replayDirectory,fs.constants.R_OK);check('录像目录',true,'目录存在且可以读取');}catch{check('录像目录',false,'尚未设置，或目录无法读取；请更新录像路径');}
+            if(folder&&c.toonHandle)check('账号与路径',folder===c.toonHandle,folder===c.toonHandle?'账号一致':'路径属于其他账号，请检查身份与录像目录');
+            check('录像自动读取',c.enabled&&c.autoTrack,c.enabled&&c.autoTrack?'已开启':'已关闭，仍可手动扫描录像');
+            check('游戏连接',!['offline','unknown'].includes(sc2.snapshot().phase),sc2.snapshot().label);
+            check('录像核对',!watcher.snapshot().errors.length&&!ladder.snapshot().pending.length,`${ladder.snapshot().pending.length} 条待关联 · ${watcher.snapshot().errors.length} 条解析失败`);
+            check('MMR',c.mmr!==null,ladder.snapshot().mmrMessage);
+            diagnostics={at:now(),checks};break;
+          }
           case'identityDetect':return json(200,await discoverAccounts(ladder.getConfig(),accountOptions));
           case'identityInspect':return json(200,await inspectAccount(ladder.getConfig(),i.replayDirectory,{...accountOptions,parser:accountOptions.parser||parser}));
           case'liveConnect':interactions.configure({roomId:i.roomId,mode:i.mode});await bili.connect({roomId:i.roomId,mode:i.mode,credentials:i.credentials});break;
@@ -133,13 +151,14 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
       let content=fs.readFileSync(path.join(__dirname,'public',file));if(file==='ladder.html')content=Buffer.from(content.toString('utf8').replace('__CONTROL_TOKEN__',token));res.writeHead(200,{'Content-Type':types[ext]});res.end(content);
     }catch(error){json(400,{error:error.message});}
   });
+  server.once('listening',()=>ladder.saveSession());
   const heartbeat=setInterval(()=>{for(const res of [...clients,...keyboardClients])res.write(': heartbeat\n\n');},15000);heartbeat.unref();keyboard.configure();
-  return{server,snapshot,ladder,watcher,sc2,keyboard,interactions,bili,close(){clearInterval(liveTicker);if(liveUpdateTimer)clearTimeout(liveUpdateTimer);bili.close();clearInterval(heartbeat);watcher.close();sc2.close();keyboard.close();for(const r of [...clients,...keyboardClients])r.end();server.close();server.closeAllConnections?.();}};
+  return{server,snapshot,ladder,watcher,sc2,keyboard,interactions,bili,close(){ladder.flush();clearInterval(liveTicker);if(liveUpdateTimer)clearTimeout(liveUpdateTimer);bili.close();clearInterval(heartbeat);watcher.close();sc2.close();keyboard.close();for(const r of [...clients,...keyboardClients])r.end();server.close();server.closeAllConnections?.();}};
 }
 if(require.main===module){
   const port=Number(process.env.SC2_LADDER_PORT||17864);if(!Number.isInteger(port)||port<1024||port>65535)throw Error('天梯服务端口无效');
   let app;try{app=createAssistant({port});}catch(error){console.error('保存数据无法读取，请先备份 .ladder-data 后检查：'+error.message);process.exit(1);}
-  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0','2.3.0','2.3.1','2.3.2','2.3.3','2.3.4','2.3.5','2.3.6'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
+  app.server.on('error',async error=>{if(error.code==='EADDRINUSE'){try{const s=await(await fetch(`http://127.0.0.1:${port}/api/state`,{signal:AbortSignal.timeout(3000)})).json();if(s.replays&&['2.1.0','2.2.0','2.3.0','2.3.1','2.3.2','2.3.3','2.3.4','2.3.5','2.3.6','2.4.0'].includes(s.appVersion)){console.log(`助手已在运行，无需重复启动。请打开 http://127.0.0.1:${port}/`);if(process.argv.includes('--open'))open(port);app.close();return;}}catch{}}console.error(`端口 ${port} 启动失败：${error.message}`);app.close();process.exitCode=1;});
   app.server.listen(port,'127.0.0.1',()=>{console.log(`星际2天梯直播助手 http://127.0.0.1:${port}`);if(process.argv.includes('--open'))open(port);});
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>app.close());
 }

@@ -1,3 +1,4 @@
+const storage=require('./data-storage.cjs');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {dayKey}=require('./ladder.cjs');
 const defaults={roomId:'',mode:'public',giftEnabled:true,raffleEnabled:true,incomeEnabled:false,followTheme:true,accent:'#e6bc5c',giftX:650,giftY:40,giftWidth:560,giftSeconds:7,raffleX:40,raffleY:350,raffleWidth:460,shareBps:null};
@@ -37,8 +38,8 @@ function normalizeBiliEvent(raw,{roomId,now=Date.now}={}){
 function csv(rows){return '\ufeff'+rows.map(row=>row.map(v=>{let s=String(v??'');if(/^[\s]*[=+@-]/.test(s))s="'"+s;return '"'+s.replaceAll('"','""')+'"';}).join(',')).join('\r\n');}
 function createInteractionStore(file=null,{now=Date.now,randomInt=crypto.randomInt}={}){
  let config={...defaults},gifts=[],rounds=[],ledger={},recentChat=[],lastEventAt=null;let giftIds=new Set();
- if(file&&fs.existsSync(file)){const saved=JSON.parse(fs.readFileSync(file,'utf8'));config=sanitize(saved.config||{});gifts=(saved.gifts||[]).filter(g=>g&&typeof g.id==='string'&&Number.isFinite(g.at)&&/^[1-9]\d{0,13}$/.test(g.roomId));rounds=Array.isArray(saved.rounds)?saved.rounds:[];ledger=saved.ledger||{};giftIds=new Set(gifts.map(g=>g.roomId+':'+g.id));}
- function persist(){if(!file)return;fs.mkdirSync(path.dirname(file),{recursive:true});const temp=file+'.tmp';fs.writeFileSync(temp,JSON.stringify({version:1,config,gifts,rounds,ledger},null,2));fs.renameSync(temp,file);}
+ if(file&&(fs.existsSync(file)||fs.existsSync(file+'.bak'))){const saved=storage.readJSON(file,{},s=>{if(!storage.object(s))throw Error('互动数据格式错误');sanitize(s.config||{});if(s.gifts&&!Array.isArray(s.gifts)||s.rounds&&!Array.isArray(s.rounds)||s.ledger&&!storage.object(s.ledger))throw Error('互动记录格式错误');for(const round of s.rounds||[])if(!storage.object(round)||!Array.isArray(round.entries)||!Array.isArray(round.winners||[])||!['collecting','closed','drawn','cancelled'].includes(round.status))throw Error('抽奖记录格式错误');});config=sanitize(saved.config||{});gifts=(saved.gifts||[]).filter(g=>g&&typeof g.id==='string'&&Number.isFinite(g.at)&&/^[1-9]\d{0,13}$/.test(g.roomId));rounds=Array.isArray(saved.rounds)?saved.rounds:[];ledger=saved.ledger||{};giftIds=new Set(gifts.map(g=>g.roomId+':'+g.id));}
+ function persist(){if(!file)return;storage.writeJSON(file,{version:1,config,gifts,rounds,ledger});}
  function currentRound(){return rounds.findLast(r=>r.roomId===config.roomId)||null;}
  function tick(){const r=currentRound();if(r?.status==='collecting'&&now()>=r.deadline){r.status='closed';r.closedAt=r.deadline;persist();return true;}return false;}
  function configure(input){const next=sanitize(input,config);tick();if(next.roomId!==config.roomId&&['collecting','closed'].includes(currentRound()?.status))throw Error('请先完成或取消本轮抽奖，再切换房间');config=next;persist();return snapshot();}

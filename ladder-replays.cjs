@@ -2,6 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {defaults:appearance,sanitize:style,dayKey}=require('./ladder.cjs');
 const {sceneDefaults,sanitizeScenes}=require('./scene-settings.cjs');
 const daily=require('./daily-stats.cjs');
+const storage=require('./data-storage.cjs');
 const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
   scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
@@ -39,15 +40,30 @@ function sanitize(input,base=defaults){
   return c;
 }
 function createReplayStore(file=null,now=Date.now){
-  const sessionStartedAt=now();
+  let session={id:crypto.randomUUID(),startedAt:now(),endedAt:null,excludedIds:[]},previousSession=null,lastPersistAt=-Infinity,dirty=false;
   let config={...defaults,names:[]},records=[],seen={},pending={},active=null,baselines={},accounts={},status='录像监听就绪；可扫描今日或最近录像',mmrMessage='尚未获取 MMR';
-  if(file&&fs.existsSync(file)){
-    const saved=JSON.parse(fs.readFileSync(file,'utf8'));config=sanitize(saved.config||{});
+  const validateSaved=s=>{
+    if(!storage.object(s)||!storage.object(s.config||{}))throw Error('战绩数据格式错误');sanitize(s.config||{});
+    for(const key of ['seen','pending','baselines','accounts'])if(key in s&&!storage.object(s[key]))throw Error('战绩索引格式错误');
+    if('records'in s&&(!Array.isArray(s.records)||s.records.some(r=>!storage.object(r)||typeof r.id!=='string'||typeof r.identity!=='string'||!Number.isFinite(r.at)||!['win','loss'].includes(r.result))))throw Error('战绩列表格式错误');
+    for(const value of Object.values(s.pending||{}))if(!storage.object(value)||!storage.object(value.parsed)||!Array.isArray(value.candidates))throw Error('待核对数据格式错误');
+    for(const key of ['session','previousSession'])if(s[key]&&(!storage.object(s[key])||!Number.isFinite(s[key].startedAt)||(s[key].endedAt!==null&&!Number.isFinite(s[key].endedAt))||!Array.isArray(s[key].excludedIds)))throw Error('直播场次格式错误');
+  };
+  const saved=storage.readJSON(file,null,validateSaved);
+  if(saved){
+    config=sanitize(saved.config||{});
     for(const key of ['mmr','mmrUpdatedAt','mmrSource','mmrAt'])if(key in (saved.config||{}))config[key]=saved.config[key];
     if(config.mmr!==null&&!validMMR(config.mmr))config.mmr=null;
     records=saved.records||[];seen=saved.seen||{};pending=saved.pending||{};baselines=saved.baselines||{};accounts=saved.accounts||{};active=saved.active||null;mmrMessage=saved.mmrMessage||(config.mmr===null?'尚未获取 MMR':config.mmrSource==='estimate'?'MMR为估算，不是官方结算值':config.mmrSource==='replay'?'MMR来自录像字段，不代表最新官方结算值':'手动填写 MMR');
   }
-  function persist(){if(!file)return;accounts[identity()]=Object.fromEntries(['mmr','mmrAt','mmrSource','mmrUpdatedAt'].map(k=>[k,config[k]]));fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file+'.tmp',JSON.stringify({schema:1,config,records,seen,pending,baselines,accounts,active,mmrMessage},null,2));fs.renameSync(file+'.tmp',file);}
+  const savedHasActivity=saved?.session&&records.some(r=>r.at>=saved.session.startedAt&&!saved.session.excludedIds.includes(r.id));
+  previousSession=saved?.previousSession&&!savedHasActivity?saved.previousSession:saved?.session?.endedAt===null?saved.session:saved?.previousSession||null;
+  session.excludedIds=records.map(r=>r.id);
+  function persist(){accounts[identity()]=Object.fromEntries(['mmr','mmrAt','mmrSource','mmrUpdatedAt'].map(k=>[k,config[k]]));storage.writeJSON(file,{schema:2,config,records,seen,pending,baselines,accounts,active,mmrMessage,session,previousSession});lastPersistAt=now();dirty=false;}
+  function startSession(){session={id:crypto.randomUUID(),startedAt:now(),endedAt:null,excludedIds:records.map(r=>r.id)};previousSession=null;persist();return snapshot();}
+  function endSession(){if(session.endedAt===null){session.endedAt=now();persist();}return snapshot();}
+  function resumeSession(){if(!previousSession)throw Error('没有可继续的上一场直播');session={...previousSession,endedAt:null};previousSession=null;persist();return snapshot();}
+  function flush(){if(dirty)persist();}
   function identity(){const folder=config.replayDirectory.match(/(?:^|[\\/])(\d+-S2-\d+-\d+)(?:[\\/]|$)/);return config.toonHandle||(!config.names.length&&folder?folder[1]:'name:'+config.names.join('|'));}
   function baseline(at=now()){const key=identity()+':'+dayKey(at);if(!(key in baselines)&&config.mmr!==null)baselines[key]=config.mmr;return key;}
   function countStats(counted){
@@ -63,9 +79,10 @@ function createReplayStore(file=null,now=Date.now){
     let streak=0,last=counted.at(-1)?.result;for(let i=counted.length-1;i>=0&&counted[i].result===last;i--)streak++;
     const longest=counted.filter(r=>r.replayKey&&Number.isFinite(r.durationSeconds)&&r.durationSeconds>0).reduce((best,r)=>!best||r.durationSeconds>best.durationSeconds||r.durationSeconds===best.durationSeconds&&r.at>best.at?r:best,null);
     const longestMatch=longest?{id:longest.id,at:longest.at,durationSeconds:Math.round(longest.durationSeconds),opponent:longest.opponent,map:longest.map||'',result:longest.result}:null;
-    const sessionRecords=records.filter(r=>r.identity===identity()&&r.at>=sessionStartedAt).sort((a,b)=>a.at-b.at);
-    const session={startedAt:sessionStartedAt,stats:countStats(sessionRecords.filter(countedRecord)),records:sessionRecords.slice(-200).reverse()};
-    const key=baseline();return{session,config:{...config,names:[...config.names]},date:dayKey(now()),status,mmrMessage,stats:{daily:daily.summarize(counted),longestMatch,wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',delta:config.mmr!==null&&Number.isInteger(baselines[key])?config.mmr-baselines[key]:null,matchups},records:today.slice(-200).reverse(),pending:Object.values(pending).filter(p=>p.identity===identity()),active};
+    const sessionRecords=records.filter(r=>r.identity===identity()&&r.at>=session.startedAt&&(session.endedAt===null||r.at<=session.endedAt)&&!session.excludedIds.includes(r.id)).sort((a,b)=>a.at-b.at);
+    const sessionView={id:session.id,startedAt:session.startedAt,endedAt:session.endedAt,running:session.endedAt===null,resumeAvailable:!!previousSession,previousStartedAt:previousSession?.startedAt||null,stats:countStats(sessionRecords.filter(countedRecord)),records:sessionRecords.slice(-200).reverse()};
+    const history=records.filter(r=>r.identity===identity()).sort((a,b)=>b.at-a.at);
+    const key=baseline();return{session:sessionView,history:history.slice(0,500),historyTotal:history.length,config:{...config,names:[...config.names]},date:dayKey(now()),status,mmrMessage,stats:{daily:daily.summarize(counted),longestMatch,wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',delta:config.mmr!==null&&Number.isInteger(baselines[key])?config.mmr-baselines[key]:null,matchups},records:today.slice(-200).reverse(),pending:Object.values(pending).filter(p=>p.identity===identity()),active};
   }
   function configure(input){const before=identity(),previous=Object.fromEntries(['mmr','mmrAt','mmrSource','mmrUpdatedAt'].map(k=>[k,config[k]]));config=sanitize(input,config);if(identity()!==before){accounts[before]=previous;active=null;Object.assign(config,accounts[identity()]||{mmr:null,mmrAt:null,mmrSource:'unknown',mmrUpdatedAt:null});mmrMessage=config.mmr===null?'游戏身份已改变，请重新扫描或填写 MMR':'已恢复此账号保存的 MMR';}persist();return snapshot();}
   function updateMMR(value){if(value!==null&&!validMMR(value))throw Error('MMR请填1～20000整数或留空');baseline();config.mmr=value;config.mmrSource=value===null?'unknown':'manual';config.mmrUpdatedAt=value===null?null:now();config.mmrAt=value===null?null:now();baseline();mmrMessage=value===null?'MMR已清空':'手动修正 MMR';persist();return snapshot();}
@@ -74,8 +91,9 @@ function createReplayStore(file=null,now=Date.now){
     // The client has names but no account handles. It never creates a result.
     const me=game.players.filter(p=>config.names.includes(p.name));if(me.length!==1)return;
     const opponent=game.players.find(p=>p!==me[0]),key=JSON.stringify(game.players.map(p=>[p.name,p.race]).sort());
-    if(phase==='live'&&(!active||active.key!==key||game.displayTime<active.lastTime-3||active.endedAt))active={id:crypto.randomUUID(),key,startedAt:now()-game.displayTime*1000,opponent:opponent.name,opponentRace:race(opponent.race),identity:identity(),lastTime:game.displayTime};
-    if(active&&active.key===key){active.lastTime=game.displayTime;active.updatedAt=now();if(phase==='menu'&&!active.endedAt)active.endedAt=now();persist();}
+    let boundary=false;
+    if(phase==='live'&&(!active||active.key!==key||game.displayTime<active.lastTime-3||active.endedAt)){boundary=true;active={id:crypto.randomUUID(),key,startedAt:now()-game.displayTime*1000,opponent:opponent.name,opponentRace:race(opponent.race),identity:identity(),lastTime:game.displayTime};}
+    if(active&&active.key===key){active.lastTime=game.displayTime;active.updatedAt=now();if(phase==='menu'&&!active.endedAt){active.endedAt=now();boundary=true;}dirty=true;if(boundary||now()-lastPersistAt>=5000)persist();}
   }
   function add(result,extra={}){
     if(!['win','loss'].includes(result))throw Error('战绩只能是胜或负');
@@ -121,6 +139,6 @@ function createReplayStore(file=null,now=Date.now){
     daily.enrich(r,p,metricsOpponent);if(!r.excluded&&!isAI)updateFromReplay(p,r.result);seen[key]=r.id;seen[hashKey]=r.id;delete pending[key];status=`已${r.source==='manual'?'关联手动记录':'读取一'+(result==='win'?'胜':'负')} · ${op.name}${isAI?' · 人机1v1':''}`;persist();return{kind:'recorded',message:status};
   }
   function resolve(key,recordId,newRecord){const p=pending[key];if(!p)throw Error('待核对录像不存在');return acceptReplay(p.parsed,p.hash,{recordId,newRecord});}
-  return{snapshot,configure,updateMMR,observe,add,edit,undo,acceptReplay,resolve,getConfig:()=>config,getSessionStartedAt:()=>sessionStartedAt,setStatus:s=>{status=s;}};
+  return{snapshot,startSession,endSession,resumeSession,flush,saveSession:persist,configure,updateMMR,observe,add,edit,undo,acceptReplay,resolve,getConfig:()=>config,getSessionStartedAt:()=>session.startedAt,getSessionEndedAt:()=>session.endedAt,setStatus:s=>{status=s;}};
 }
 module.exports={createReplayStore,sanitize,defaults,validMMR};

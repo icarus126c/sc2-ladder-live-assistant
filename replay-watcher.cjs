@@ -18,7 +18,7 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
     if(busy){force=mode;return snapshot();}if(closed)return snapshot();
     const c={...store.getConfig(),names:[...store.getConfig().names]},generation=epoch;
     const scanDay=dayKey(now()),sessionStartedAt=store.getSessionStartedAt();
-    const inScope=at=>dayKey(at)===scanDay||(mode==='auto'&&at>=sessionStartedAt);
+    const inScope=at=>dayKey(at)===scanDay||(mode==='auto'&&at>=sessionStartedAt&&(store.getSessionEndedAt?.()==null||at<=store.getSessionEndedAt()));
     if(!c.replayDirectory){status.message='请先设置录像目录';onUpdate();return snapshot();}
     if(!c.toonHandle&&!c.names.length&&!/(?:^|[\\/])\d+-S2-\d+-\d+(?:[\\/]|$)/.test(c.replayDirectory)){status.message='请指定完整账号或精确昵称，避免把其他账号录像记入';onUpdate();return snapshot();}
     const previous={...status};busy=true;status={...status,busy:true,message:'正在检查录像…',scanned:0,recorded:0,skipped:0,duplicates:0,errors:[],recent:mode==='auto'?status.recent:[]};onUpdate();
@@ -36,7 +36,7 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
           if(closed||generation!==epoch)break;
           if(mode!=='recent'&&!inScope(p.at)){if(mode==='auto')cache.set(f.file,stamp);continue;}
           const result=store.acceptReplay(p,hash);status.scanned++;status[result.kind==='recorded'?'recorded':result.kind==='duplicate'?'duplicates':'skipped']++;
-          status.recent.unshift({name:path.basename(f.file),kind:result.kind,message:result.message,at:p.at,players:p.players.map(x=>({name:x.name,toonHandle:x.toonHandle}))});status.recent=status.recent.slice(0,15);cache.set(f.file,stamp);onUpdate();
+          status.recent.unshift({name:path.basename(f.file),hash,kind:result.kind,message:result.message,at:p.at,players:p.players.map(x=>({name:x.name,toonHandle:x.toonHandle}))});status.recent=status.recent.slice(0,15);cache.set(f.file,stamp);onUpdate();
         }catch(error){status.errors.push({name:path.basename(f.file),message:error.message});status.errors=status.errors.slice(-15);onUpdate();}
       }
       status.message=`检查 ${status.scanned} 盘 · 新增/关联 ${status.recorded} · 已处理 ${status.duplicates} · 跳过 ${status.skipped}`+(status.errors.length?' · 部分解析失败，会重试':'');

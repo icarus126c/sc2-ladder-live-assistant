@@ -74,7 +74,8 @@ function createSc2Monitor({ getConfig, getScene, transition, onUpdate, onSample 
   const engine = new AutomationEngine();
   let closed = false, active = null, generation = 0;
   let status = { phase: 'offline', label: PHASE_LABELS.offline, checkedAt: null, pending: null, message: '点击检测连接，或开启自动切换' };
-  const publish = () => onUpdate({ ...status });
+  let publishedKey='',publishedAt=-Infinity;
+  const publish = () => {const {checkedAt,...meaningful}=status,key=JSON.stringify(meaningful);if(key!==publishedKey||now()-publishedAt>=5000){publishedKey=key;publishedAt=now();onUpdate({ ...status });}};
   async function poll() {
     if (closed || active) return { ...status };
     const epoch = generation, port = getConfig().sc2ClientPort;
