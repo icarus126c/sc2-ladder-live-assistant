@@ -121,6 +121,6 @@ function createReplayStore(file=null,now=Date.now){
     daily.enrich(r,p,metricsOpponent);if(!r.excluded&&!isAI)updateFromReplay(p,r.result);seen[key]=r.id;seen[hashKey]=r.id;delete pending[key];status=`已${r.source==='manual'?'关联手动记录':'读取一'+(result==='win'?'胜':'负')} · ${op.name}${isAI?' · 人机1v1':''}`;persist();return{kind:'recorded',message:status};
   }
   function resolve(key,recordId,newRecord){const p=pending[key];if(!p)throw Error('待核对录像不存在');return acceptReplay(p.parsed,p.hash,{recordId,newRecord});}
-  return{snapshot,configure,updateMMR,observe,add,edit,undo,acceptReplay,resolve,getConfig:()=>config,setStatus:s=>{status=s;}};
+  return{snapshot,configure,updateMMR,observe,add,edit,undo,acceptReplay,resolve,getConfig:()=>config,getSessionStartedAt:()=>sessionStartedAt,setStatus:s=>{status=s;}};
 }
 module.exports={createReplayStore,sanitize,defaults,validMMR};

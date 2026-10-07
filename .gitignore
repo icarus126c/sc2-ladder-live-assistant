@@ -8,6 +8,7 @@ release/
 __pycache__/
 *.pyc
 *.SC2Replay
+!ladder-test/fixtures/*.SC2Replay
 .env
 .env.*
 *.log

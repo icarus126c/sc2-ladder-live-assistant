@@ -17,14 +17,16 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
     if(!['auto','today','recent'].includes(mode))throw Error('扫描模式无效');
     if(busy){force=mode;return snapshot();}if(closed)return snapshot();
     const c={...store.getConfig(),names:[...store.getConfig().names]},generation=epoch;
+    const scanDay=dayKey(now()),sessionStartedAt=store.getSessionStartedAt();
+    const inScope=at=>dayKey(at)===scanDay||(mode==='auto'&&at>=sessionStartedAt);
     if(!c.replayDirectory){status.message='请先设置录像目录';onUpdate();return snapshot();}
     if(!c.toonHandle&&!c.names.length&&!/(?:^|[\\/])\d+-S2-\d+-\d+(?:[\\/]|$)/.test(c.replayDirectory)){status.message='请指定完整账号或精确昵称，避免把其他账号录像记入';onUpdate();return snapshot();}
     const previous={...status};busy=true;status={...status,busy:true,message:'正在检查录像…',scanned:0,recorded:0,skipped:0,duplicates:0,errors:[],recent:mode==='auto'?status.recent:[]};onUpdate();
     try{
       let list=files(c.replayDirectory).filter(f=>now()-f.mtime>=1800);
-      if(mode==='auto'||mode==='today')list=list.filter(f=>dayKey(f.mtime)===dayKey(now()));
+      if(mode==='auto'||mode==='today')list=list.filter(f=>inScope(f.mtime));
       if(mode==='recent')list=list.sort((a,b)=>b.mtime-a.mtime).slice(0,30);
-      // File mtime scopes the fast scan; replay timestamps decide the accounting date.
+      // Auto scans also cover the running stream across midnight; the store assigns each accounting date.
       list.sort((a,b)=>a.mtime-b.mtime);
       for(const f of list){if(closed||generation!==epoch)break;
         const stamp=[f.size,f.mtime,c.toonHandle,c.names.join('|'),c.includeAI===true].join(':');if(mode==='auto'&&cache.get(f.file)===stamp)continue;
@@ -32,7 +34,7 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
           const content=await fs.promises.readFile(f.file),hash=crypto.createHash('sha256').update(content).digest('hex');
           const p=await parser(f.file,c);const after=fs.statSync(f.file);if(after.size!==f.size||after.mtimeMs!==f.mtime)continue;
           if(closed||generation!==epoch)break;
-          if(mode!=='recent'&&dayKey(p.at)!==dayKey(now())){cache.set(f.file,stamp);continue;}
+          if(mode!=='recent'&&!inScope(p.at)){if(mode==='auto')cache.set(f.file,stamp);continue;}
           const result=store.acceptReplay(p,hash);status.scanned++;status[result.kind==='recorded'?'recorded':result.kind==='duplicate'?'duplicates':'skipped']++;
           status.recent.unshift({name:path.basename(f.file),kind:result.kind,message:result.message,at:p.at,players:p.players.map(x=>({name:x.name,toonHandle:x.toonHandle}))});status.recent=status.recent.slice(0,15);cache.set(f.file,stamp);onUpdate();
         }catch(error){status.errors.push({name:path.basename(f.file),message:error.message});status.errors=status.errors.slice(-15);onUpdate();}
