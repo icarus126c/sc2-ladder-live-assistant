@@ -9,11 +9,11 @@ const {createStylePackStore}=require('./style-packs.cjs');
 const {createInteractionStore,normalizeBiliEvent}=require('./live-interactions.cjs'),{createBilibiliClient}=require('./bilibili-live.cjs');
 const {createKeyboardInput}=require('./keyboard-input.cjs');
 const {createReplayStore}=require('./ladder-replays.cjs'),{createReplayWatcher}=require('./replay-watcher.cjs'),{createSc2Monitor}=require('./sc2.cjs');
-const defaults={sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:true,obsMapping:{game:'',intermission:'',loading:'',break:'',blank:''}};
+const defaults={sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:true,obsMapping:{game:'',intermission:'',loading:'',break:'',blank:'',custom:''}};
 function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array.isArray(input))throw Error('设置格式错误');const c={...base,obsMapping:{...base.obsMapping}};
   for(const k of ['sc2AutoEnabled','sc2AutoPaused','sc2IncludeReplays'])if(k in input){if(typeof input[k]!=='boolean')throw Error('开关格式错误');c[k]=input[k];}
   for(const [k,min,max]of [['sc2ClientPort',1024,65535],['sc2StartDelay',0,10],['sc2EndDelay',0,60]])if(k in input){if(!Number.isFinite(input[k])||(k==='sc2ClientPort'&&!Number.isInteger(input[k]))||input[k]<min||input[k]>max)throw Error('切换设置超出范围');c[k]=input[k];}
-  if(input.obsMapping){for(const k of ['game','intermission','loading','break','blank'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
+  if(input.obsMapping){for(const k of ['game','intermission','loading','break','blank','custom'])if(k in input.obsMapping){if(typeof input.obsMapping[k]!=='string'||input.obsMapping[k].length>150)throw Error('OBS场景名称无效');c.obsMapping[k]=input.obsMapping[k];}}
   return c;
 }
 function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
@@ -39,7 +39,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   for(const file of ['nahida-keys-v1.png','vesna-keys-v1.png','naiwa-keys-v1.png','nahida-frame-v1.png','starcraft-scene-v1.png'])routes['/assets/'+file]='assets/'+file;
   for(const f of ['nicole-frame-v1.png','nicole-keys-v1.png','nicole-waiting-v1.png','nicole-away-v1.png'])routes['/assets/'+f]='assets/'+f;
   routes['/assets/control-reference.png']='assets/control-reference.png';routes['/live-interaction']='live-interaction.html';routes['/daily-data']='daily-data.html';routes['/sponsor']='sponsor.html';for(const f of ['daily-model.js','daily-overlay.js','daily-overlay.css','daily-workspace.js','daily-workspace.css','sponsor.js','sponsor.css'])routes['/'+f]=f;for(const f of ['wechat.png','alipay.png'])routes['/sponsorship/'+f]='sponsorship/'+f;
-  routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
+  routes['/custom-screen']=routes['/waiting-screen']=routes['/away-screen']=routes['/loading-screen']='ladder-output.html';
   for(const f of ['scene-customization.js','scene-editor.js','scene-editor.css','scene-editor-preview.js'])routes['/'+f]=f;
   for(const file of ['style-pack-workspace.js','style-pack.css','style-pack-prompt.txt','style-pack-example.json','identity-workspace.js','control-connection.js','session-workspace.js'])routes['/'+file]=file;
   const server=http.createServer(async(req,res)=>{
@@ -141,7 +141,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
           case'replayResolve':ladder.resolve(i.key,i.recordId,i.newRecord===true);break;
           case'sc2Check':await sc2.poll();break;
           case'configure':{const before=config;config=sanitize(i.config,config);sc2.configure(before);persist();break;}
-          case'transition':case'cut':{if(!['game','intermission','loading','break','blank'].includes(i.scene))throw Error('场景无效');scene=i.scene;if(config.sc2AutoEnabled){const before=config;config={...config,sc2AutoPaused:true};sc2.configure(before);persist();}break;}
+          case'transition':case'cut':{if(!['game','intermission','loading','break','blank','custom'].includes(i.scene))throw Error('场景无效');scene=i.scene;if(config.sc2AutoEnabled){const before=config;config={...config,sc2AutoPaused:true};sc2.configure(before);persist();}break;}
           default:throw Error('未知操作');
         }broadcast();return json(200,snapshot());
       }

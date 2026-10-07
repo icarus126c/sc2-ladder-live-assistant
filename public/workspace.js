@@ -24,7 +24,7 @@
     window.scrollTo({top:0,behavior:'instant'});window.CatWorkspace?.route(view);
   }
   addEventListener('hashchange',route);route();
-  const scenePreviewNames={game:'游戏画面',intermission:'搜索 / 等待',break:'暂离画面',loading:'比赛载入',blank:'空白场景'};
+  const scenePreviewNames={game:'游戏画面',intermission:'搜索 / 等待',break:'暂离画面',loading:'比赛载入',blank:'空白场景',custom:'自定义场景'};
   let scenePreviewPhase='game';
   function sendScenePreview(){ $('sceneOnlyPreview').contentWindow?.postMessage({type:'scenePreview',phase:scenePreviewPhase},location.origin); }
   $('sceneOnlyPreview').addEventListener('load',sendScenePreview);

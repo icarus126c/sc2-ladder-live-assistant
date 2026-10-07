@@ -1,0 +1,26 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),vm=require('node:vm');
+const {createAssistant}=require('../ladder-server.cjs'),{createReplayStore,sanitize}=require('../ladder-replays.cjs'),M=require('../public/scene-customization.js'),themes=require('../public/scene-themes.js');
+
+test('custom scene settings persist independently, filter unsafe drafts and permit a transparent background',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'custom-scene-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const store=createReplayStore(path.join(dir,'records.json'));store.configure({waitingTitle:'等待原文',breakTitle:'暂离原文',customTitle:'节目预告',customNote:'下一场马上开始',customBackground:'transparent',customShowKeyboard:true,customTextX:500,customFreePosition:true});
+ const c=createReplayStore(path.join(dir,'records.json')).getConfig();assert.equal(c.customTitle,'节目预告');assert.equal(c.customBackground,'transparent');assert.equal(c.customShowKeyboard,true);assert.equal(c.customTextX,500);assert.equal(c.waitingTitle,'等待原文');assert.equal(c.breakTitle,'暂离原文');
+ assert.deepEqual(M.filter({customTitle:'合法',customShowKeyboard:true,customTextX:600,waitingTitle:'其他场景',toonHandle:'5-S2-1-9',mmr:9999},'custom'),{customTitle:'合法',customShowKeyboard:true,customTextX:600});
+ for(const patch of [{customTitle:'x'.repeat(61)},{customShowKeyboard:'true'},{customBackgroundImage:'https://example.com/a.png'},{customBackgroundVideo:'/scene-media/../records.json'},{customTextY:1001},{customColor:'red'},{waitingBackground:'transparent'}])assert.throws(()=>sanitize(patch));
+ const mapped=themes.resolve(c,'custom');assert.equal(mapped.waitingTitle,'节目预告');assert.equal(mapped.waitingShowKeyboard,true);assert.equal(mapped.waitingFreePosition,true);assert.equal(c.waitingTitle,'等待原文');
+});
+test('custom is an authenticated manual scene that resumes to automatic live, replay and menu scenes',async t=>{
+ let phase='live';const app=createAssistant({port:0,dataDir:null,sc2Reader:async()=>phase,intervalMs:60000});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));t.after(()=>app.close());const base='http://127.0.0.1:'+app.server.address().port,html=await(await fetch(base)).text(),token=html.match(/name="control-token" content="([a-f\d]+)"/)[1];
+ const action=async(action,extra={})=>{const r=await fetch(base+'/api/action',{method:'POST',headers:{'Content-Type':'application/json','X-Control-Token':token},body:JSON.stringify({action,...extra})});assert.equal(r.status,200);return r.json();};
+ assert.equal((await fetch(base+'/api/action',{method:'POST',body:JSON.stringify({action:'transition',scene:'custom'})})).status,403);
+ await action('configure',{config:{obsMapping:{custom:'活动画面'}}});const before=app.ladder.getConfig();const selected=await action('transition',{scene:'custom'});assert.equal(selected.scene,'custom');assert.equal(selected.config.sc2AutoPaused,true);assert.equal(selected.config.obsMapping.custom,'活动画面');assert.deepEqual(app.ladder.getConfig(),before);
+ await app.sc2.poll();await app.sc2.poll();assert.equal(app.snapshot().scene,'custom');
+ for(const status of ['live','replay','menu']){phase=status;await action('transition',{scene:'custom'});await action('configure',{config:{sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder'}});await app.sc2.poll();await app.sc2.poll();assert.equal(app.snapshot().scene,status==='menu'?'intermission':'game');}
+ assert.equal(app.snapshot().ladder.session.stats.total,0);assert.equal((await fetch(base+'/custom-screen')).status,200);
+});
+test('custom output renders its own background and text, supports HUD without scene text, and clears video on exit',()=>{
+ const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,textContent:'',innerHTML:'',style:{setProperty(k,v){this[k]=v;}},parentElement:{hidden:false},getAttribute(){return '';}});return nodes.get(id);},videoCalls=[],win={SceneThemes:themes,SceneVideo:{render:(c,hidden)=>videoCalls.push({c,hidden})}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/ladder-overlay.js'),'utf8'),{window:win,document:{getElementById:node}});
+ const store=createReplayStore();store.configure({customTitle:'节目预告',customTheme:'starcraft',customBackground:'transparent',customShowText:false,customShowHUD:true,showHUD:true});const state={scene:'custom',ladder:store.snapshot()};win.LadderOverlay.render(state);assert.equal(node('ladderWaiting').hidden,false);assert.equal(node('waitingTitle').textContent,'节目预告');assert.equal(node('ladderWaiting').style['--waiting-color'],'transparent');assert.equal(node('ladderWaiting').style['--waiting-dim'],0);assert.equal(node('waitingInner').hidden,true);assert.equal(node('ladderHUD').hidden,false);
+ store.configure({customBackground:'video',customBackgroundVideo:'/scene-media/'+'a'.repeat(64)+'.mp4'});state.ladder=store.snapshot();win.LadderOverlay.render(state);assert.equal(videoCalls.at(-1).c.waitingBackgroundVideo,state.ladder.config.customBackgroundVideo);assert.equal(videoCalls.at(-1).hidden,false);
+ state.scene='game';win.LadderOverlay.render(state);assert.equal(node('ladderWaiting').hidden,true);assert.equal(videoCalls.at(-1).hidden,true);assert.equal(node('ladderHUD').hidden,true);
+});
