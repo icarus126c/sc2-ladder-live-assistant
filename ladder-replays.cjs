@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {defaults:appearance,sanitize:style,dayKey}=require('./ladder.cjs');
 const {sceneDefaults,sanitizeScenes}=require('./scene-settings.cjs');
 const daily=require('./daily-stats.cjs');
-const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
+const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
   scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
   waitingLayout:'center',waitingImageFit:'cover',waitingDim:35,waitingPanelOpacity:35,waitingWidth:1320,waitingTitleSize:66,waitingKicker:'TEAM AENEAS / LADDER SESSION',
@@ -19,7 +19,7 @@ function sanitize(input,base=defaults){
   for(const key of ['replayDirectory','toonHandle'])if(key in input){if(typeof input[key]!=='string'||input[key].length>1024||input[key].includes('\0'))throw Error('目录或账号格式不正确');c[key]=input[key].trim();}
   if(c.toonHandle&&!/^\d+-S2-\d+-\d+$/.test(c.toonHandle))throw Error('账号请填写完整格式，例如 5-S2-1-9469666');
   if('mmrMode'in input){if(!['replay','estimate','manual'].includes(input.mmrMode))throw Error('MMR模式不正确');c.mmrMode=input.mmrMode;}
-  for(const key of ['scoreboardEnabled','scoreboardDetails'])if(key in input){if(typeof input[key]!=='boolean')throw Error('计分器开关格式不正确');c[key]=input[key];}
+  for(const key of ['scoreboardEnabled','scoreboardDetails','includeAI'])if(key in input){if(typeof input[key]!=='boolean')throw Error('计分器开关格式不正确');c[key]=input[key];}
   if('scoreboardAccent'in input){if(typeof input.scoreboardAccent!=='string'||(input.scoreboardAccent!==''&&!/^#[a-f\d]{6}$/i.test(input.scoreboardAccent)))throw Error('计分器颜色不正确');c.scoreboardAccent=input.scoreboardAccent;}
   if('scoreboardTemplate'in input){if(!['compact','bluegold','dual'].includes(input.scoreboardTemplate))throw Error('计分器模板不正确');c.scoreboardTemplate=input.scoreboardTemplate;}
   for(const [key,min,max]of [['scoreboardX',0,1900],['scoreboardY',0,1060],['scoreboardWidth',320,1000],['scoreboardScale',50,150],['scoreboardOpacity',0,100],['scoreboardPanelOpacity',0,100]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('计分器位置或大小超出范围');c[key]=input[key];}
@@ -56,14 +56,15 @@ function createReplayStore(file=null,now=Date.now){
     let streak=0,last=counted.at(-1)?.result;for(let i=counted.length-1;i>=0&&counted[i].result===last;i--)streak++;
     return{wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',matchups};
   }
+  function countedRecord(r){return !r.excluded&&(r.matchType!=='ai1v1'||config.includeAI);}
   function snapshot(){
-    const today=records.filter(r=>r.identity===identity()&&dayKey(r.at)===dayKey(now())).sort((a,b)=>a.at-b.at),counted=today.filter(r=>!r.excluded),wins=counted.filter(r=>r.result==='win').length,losses=counted.length-wins;
+    const today=records.filter(r=>r.identity===identity()&&dayKey(r.at)===dayKey(now())).sort((a,b)=>a.at-b.at),counted=today.filter(countedRecord),wins=counted.filter(r=>r.result==='win').length,losses=counted.length-wins;
     const matchups=Object.fromEntries(['T','Z','P'].map(r=>[r,{wins:counted.filter(m=>m.opponentRace===r&&m.result==='win').length,losses:counted.filter(m=>m.opponentRace===r&&m.result==='loss').length}]));
     let streak=0,last=counted.at(-1)?.result;for(let i=counted.length-1;i>=0&&counted[i].result===last;i--)streak++;
     const longest=counted.filter(r=>r.replayKey&&Number.isFinite(r.durationSeconds)&&r.durationSeconds>0).reduce((best,r)=>!best||r.durationSeconds>best.durationSeconds||r.durationSeconds===best.durationSeconds&&r.at>best.at?r:best,null);
     const longestMatch=longest?{id:longest.id,at:longest.at,durationSeconds:Math.round(longest.durationSeconds),opponent:longest.opponent,map:longest.map||'',result:longest.result}:null;
     const sessionRecords=records.filter(r=>r.identity===identity()&&r.at>=sessionStartedAt).sort((a,b)=>a.at-b.at);
-    const session={startedAt:sessionStartedAt,stats:countStats(sessionRecords.filter(r=>!r.excluded)),records:sessionRecords.slice(-200).reverse()};
+    const session={startedAt:sessionStartedAt,stats:countStats(sessionRecords.filter(countedRecord)),records:sessionRecords.slice(-200).reverse()};
     const key=baseline();return{session,config:{...config,names:[...config.names]},date:dayKey(now()),status,mmrMessage,stats:{daily:daily.summarize(counted),longestMatch,wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',delta:config.mmr!==null&&Number.isInteger(baselines[key])?config.mmr-baselines[key]:null,matchups},records:today.slice(-200).reverse(),pending:Object.values(pending).filter(p=>p.identity===identity()),active};
   }
   function configure(input){const before=identity(),previous=Object.fromEntries(['mmr','mmrAt','mmrSource','mmrUpdatedAt'].map(k=>[k,config[k]]));config=sanitize(input,config);if(identity()!==before){accounts[before]=previous;active=null;Object.assign(config,accounts[identity()]||{mmr:null,mmrAt:null,mmrSource:'unknown',mmrUpdatedAt:null});mmrMessage=config.mmr===null?'游戏身份已改变，请重新扫描或填写 MMR':'已恢复此账号保存的 MMR';}persist();return snapshot();}
@@ -86,7 +87,7 @@ function createReplayStore(file=null,now=Date.now){
     const r={id:session?.id||crypto.randomUUID(),identity:identity(),at,result,opponent:extra.opponent||session?.opponent||'手动记录',opponentRace:session?.opponentRace||'',startedAt:session?.startedAt,source:'manual',excluded:false};records.push(r);persist();return snapshot();
   }
   function edit(id,patch){const r=records.find(r=>r.id===id&&r.identity===identity());if(!r)throw Error('记录不存在');if('result'in patch){if(!['win','loss'].includes(patch.result))throw Error('胜负无效');r.result=patch.result;}if('excluded'in patch){if(typeof patch.excluded!=='boolean')throw Error('排除格式无效');r.excluded=patch.excluded;}persist();return snapshot();}
-  function undo(scope='today'){if(!['today','session'].includes(scope))throw Error('撤销范围无效');const snap=snapshot(),r=(scope==='session'?snap.session.records:snap.records).find(r=>!r.excluded);if(r)return edit(r.id,{excluded:true});return snapshot();}
+  function undo(scope='today'){if(!['today','session'].includes(scope))throw Error('撤销范围无效');const snap=snapshot(),r=(scope==='session'?snap.session.records:snap.records).find(countedRecord);if(r)return edit(r.id,{excluded:true});return snapshot();}
   function updateFromReplay(p,result){
     if(config.mmrMode==='manual')return;
     if(config.mmrAt!==null&&p.at<=config.mmrAt)return;
@@ -102,11 +103,12 @@ function createReplayStore(file=null,now=Date.now){
   }
   function acceptReplay(p,hash,{recordId,newRecord=false}={}){
     if(!p?.ok)throw Error(p?.error||'录像解析失败');
-    const me=p.selfPlayers?.[0],op=p.opponents?.[0];
-    if(p.players?.some(x=>x.human===false)){status='已跳过：人机对局不计入真人1v1战绩';return{kind:'skipped',message:status};}
-    if(p.players?.length!==2||p.selfPlayers?.length!==1||p.opponents?.length!==1||p.players.some(x=>x.human!==true)||!['W','L'].includes(p.selfResult)||!Number.isFinite(p.at)||p.at<=0||p.at>now()+60000){status='已跳过：旁观、身份不明、非1v1或胜负/时间无效';return{kind:'skipped',message:status};}
+    const me=p.selfPlayers?.[0],op=p.opponents?.[0],isAI=p.players?.some(x=>x.human===false);
+    const metricsOpponent=isAI?{...op,mmr:null}:op;
+    if(isAI&&!config.includeAI){status='已跳过：人机对局不计入真人1v1战绩；可开启“计入人机对局”';return{kind:'skipped',message:status};}
+    if(p.players?.length!==2||p.selfPlayers?.length!==1||p.opponents?.length!==1||me?.human!==true||(isAI?op?.human!==false:op?.human!==true)||p.players.some(x=>x.human!==true&&x.human!==false)||!['W','L'].includes(p.selfResult)||!Number.isFinite(p.at)||p.at<=0||p.at>now()+60000){status='已跳过：旁观、身份不明、非1v1或胜负/时间无效';return{kind:'skipped',message:status};}
     const matchKey=crypto.createHash('sha256').update(JSON.stringify([p.at,p.durationSeconds,p.map,p.players.map(x=>x.toonHandle).sort()])).digest('hex'),key=identity()+':'+matchKey,hashKey=identity()+':'+hash;
-    if(seen[key]||seen[hashKey]){const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,op):false;if(previous&&(!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}if(changed)persist();return{kind:'duplicate',message:'已处理过这盘录像，统计已核对'};}
+    if(seen[key]||seen[hashKey]){const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,metricsOpponent):false;if(previous&&(!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}if(changed)persist();return{kind:'duplicate',message:'已处理过这盘录像，统计已核对'};}
     const result=p.selfResult==='W'?'win':'loss';
     const candidates=records.filter(r=>r.identity===identity()&&r.source==='manual'&&!r.replayKey&&(Math.abs(r.at-p.at)<=120000||(r.startedAt&&p.durationSeconds&&Math.abs(r.startedAt-(p.at-p.durationSeconds*1000))<=15000))&&(r.opponent==='手动记录'||r.opponent===op.name));
     let r=recordId?records.find(r=>r.id===recordId&&r.identity===identity()&&!r.replayKey):null;
@@ -114,8 +116,8 @@ function createReplayStore(file=null,now=Date.now){
     if(!r&&!newRecord&&candidates.length===1)r=candidates[0];
     if(!r&&!newRecord&&candidates.length>1){pending[key]={key,hash,parsed:p,identity:identity(),candidates:candidates.map(r=>r.id)};status='录像可能对应多条手动补记，请在待核对区关联原记录';persist();return{kind:'pending',message:status};}
     if(!r){r={id:crypto.randomUUID(),at:p.at,result,identity:identity(),source:'replay',excluded:false};records.push(r);}
-    Object.assign(r,{at:p.at,replayKey:key,replayHash:hash,map:p.map,opponent:op.name,opponentRace:race(op.race),race:race(me.race),matchType:'human1v1',replayAt:p.at,replayResult:result,durationSeconds:Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.durationSeconds:null});
-    daily.enrich(r,p,op);if(!r.excluded)updateFromReplay(p,r.result);seen[key]=r.id;seen[hashKey]=r.id;delete pending[key];status=`已${r.source==='manual'?'关联手动记录':'读取一'+(result==='win'?'胜':'负')} · ${op.name}`;persist();return{kind:'recorded',message:status};
+    Object.assign(r,{at:p.at,replayKey:key,replayHash:hash,map:p.map,opponent:op.name,opponentRace:race(op.race),race:race(me.race),matchType:isAI?'ai1v1':'human1v1',replayAt:p.at,replayResult:result,durationSeconds:Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.durationSeconds:null});
+    daily.enrich(r,p,metricsOpponent);if(!r.excluded&&!isAI)updateFromReplay(p,r.result);seen[key]=r.id;seen[hashKey]=r.id;delete pending[key];status=`已${r.source==='manual'?'关联手动记录':'读取一'+(result==='win'?'胜':'负')} · ${op.name}${isAI?' · 人机1v1':''}`;persist();return{kind:'recorded',message:status};
   }
   function resolve(key,recordId,newRecord){const p=pending[key];if(!p)throw Error('待核对录像不存在');return acceptReplay(p.parsed,p.hash,{recordId,newRecord});}
   return{snapshot,configure,updateMMR,observe,add,edit,undo,acceptReplay,resolve,getConfig:()=>config,setStatus:s=>{status=s;}};

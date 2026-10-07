@@ -27,7 +27,7 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
       // File mtime scopes the fast scan; replay timestamps decide the accounting date.
       list.sort((a,b)=>a.mtime-b.mtime);
       for(const f of list){if(closed||generation!==epoch)break;
-        const stamp=[f.size,f.mtime,c.toonHandle,c.names.join('|')].join(':');if(mode==='auto'&&cache.get(f.file)===stamp)continue;
+        const stamp=[f.size,f.mtime,c.toonHandle,c.names.join('|'),c.includeAI===true].join(':');if(mode==='auto'&&cache.get(f.file)===stamp)continue;
         try{
           const content=await fs.promises.readFile(f.file),hash=crypto.createHash('sha256').update(content).digest('hex');
           const p=await parser(f.file,c);const after=fs.statSync(f.file);if(after.size!==f.size||after.mtimeMs!==f.mtime)continue;

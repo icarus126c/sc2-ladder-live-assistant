@@ -22,4 +22,5 @@ test('control UI renders parser status and submits the full account identity',as
   events.onopen();events.onmessage({data:JSON.stringify(state)});assert.equal(node('toonHandle').value,'5-S2-1-9');assert.equal(node('replayDirectory').value,'C:\\中文目录');assert.equal(node('replayStatus').textContent,'已跳过旁观录像');assert.match(node('mmrTime').textContent,/录像结束.*2026\/10\/4.*录像值/);
   node('toonHandle').value='5-S2-1-123';await node('identityForm').submit({preventDefault(){}});assert.equal(submitted.config.toonHandle,'5-S2-1-123');
   node('mmrMode').value='estimate';await node('mmrMode').change();assert.equal(submitted.config.mmrMode,'estimate');
+  assert.equal(node('includeAI').checked,false);node('includeAI').checked=true;await node('includeAI').change();assert.deepEqual(submitted.config,{includeAI:true});
 });

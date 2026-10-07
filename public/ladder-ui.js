@@ -10,7 +10,7 @@
   async function syncOBS(){if(obsBusy||!obs.ready||!obsDesired||obsDesired===obsApplied)return;obsBusy=true;try{const target=obsDesired;await obs.request('SetCurrentProgramScene',{sceneName:target});obsApplied=target;}catch(error){$('obsStatus').textContent=error.message;obsDesired='';}finally{obsBusy=false;if(obsDesired&&obsDesired!==obsApplied)syncOBS();}}
   function render(next){
     state=next;const c=next.ladder.config,s={...next.ladder.stats,...next.ladder.session?.stats},g=next.config,a=next.automation;
-    $('assistantEnabled').checked=c.enabled;$('autoTrack').checked=c.autoTrack;$('previewReplayEnabled').checked=c.autoTrack;$('previewMasterPaused').hidden=c.enabled;$('previewReplayStatus').textContent=!c.enabled?'已暂停 · 直播工具总开关关闭':!c.autoTrack?'自动读取已关闭 · 已有战绩保留':!c.replayDirectory?'已开启 · 请先设置账号与录像目录':next.replays.busy?'正在读取录像…':'已开启 · 新录像保存后自动读取';$('showHUD').checked=c.showHUD;
+    $('assistantEnabled').checked=c.enabled;$('autoTrack').checked=c.autoTrack;$('includeAI').checked=c.includeAI===true;$('previewReplayEnabled').checked=c.autoTrack;$('previewMasterPaused').hidden=c.enabled;$('previewReplayStatus').textContent=!c.enabled?'已暂停 · 直播工具总开关关闭':!c.autoTrack?'自动读取已关闭 · 已有战绩保留':!c.replayDirectory?'已开启 · 请先设置账号与录像目录':next.replays.busy?'正在读取录像…':'已开启 · 新录像保存后自动读取';$('showHUD').checked=c.showHUD;
     $('todayRecord').textContent=`${s.wins} 胜 ${s.losses} 负`;$('todayDate').textContent=next.ladder.session?'本次启动 '+new Date(next.ladder.session.startedAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):next.ladder.date+' · 北京时间';
     $('currentMMR').textContent=c.mmr??'—';$('todayRate').textContent=s.winrate===null?'—':s.winrate+'%';$('todayStreak').textContent=s.streak;
     $('mmrTime').textContent=c.mmrUpdatedAt?(c.mmrSource==='manual'?'手动填写 ':'录像结束 ')+new Date(c.mmrSource==='manual'?c.mmrUpdatedAt:(c.mmrAt||c.mmrUpdatedAt)).toLocaleString('zh-CN')+(c.mmrSource==='estimate'?' · 估算':c.mmrSource==='replay'?' · 录像值':''):'尚未填写';
@@ -25,14 +25,14 @@
     $('gamePhase').textContent=a?.label||'等待检测';$('gameMessage').textContent=g.sc2AutoPaused?'自动模式已暂停，手动切画面优先':a?.message||'等待连接';
     if(document.activeElement!==$('startDelay'))$('startDelay').value=g.sc2StartDelay;if(document.activeElement!==$('endDelay'))$('endDelay').value=g.sc2EndDelay;
     renderReplays(next);$('trackingStatus').textContent=c.enabled?next.ladder.status:'助手已关闭；启用后开始监测';
-    hudDraft();const key=JSON.stringify(next.ladder.records);if(key!==recordKey){recordKey=key;drawRecords(next.ladder.records);}
+    hudDraft();const key=JSON.stringify([next.ladder.records,c.includeAI===true]);if(key!==recordKey){recordKey=key;drawRecords(next.ladder.records);}
     if(obs.ready){obsDesired=g.obsMapping[next.scene]||'';syncOBS();}
-    ['assistantEnabled','autoSwitch','autoTrack','previewReplayEnabled','showHUD','addWin','addLoss','undoRecord','checkGame'].forEach(id=>$(id).disabled=!connected);
+    ['assistantEnabled','autoSwitch','autoTrack','previewReplayEnabled','includeAI','showHUD','addWin','addLoss','undoRecord','checkGame'].forEach(id=>$(id).disabled=!connected);
     if(typeof window!=='undefined')window.Workspace?.render(next);
   }
   function drawRecords(records){const box=$('records');box.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='empty';p.textContent='今天的第一场，从这里开始。';box.append(p);return;}
     for(const r of records){const row=document.createElement('div');row.className='record'+(r.excluded?' excluded':'');const badge=document.createElement('span');badge.className='record-outcome '+r.result;badge.textContent=r.result==='win'?'胜':'负';
-      const body=document.createElement('div');body.className='record-body';const name=document.createElement('b');name.textContent=r.opponent||'手动记录';const meta=document.createElement('small');meta.textContent=new Date(r.at).toLocaleTimeString('zh-CN',{hour12:false})+' · '+(r.source==='replay'?'录像识别':r.replayKey?'手动 · 已关联录像':'手动待核对')+(Number.isFinite(r.durationSeconds)?' · '+Math.floor(r.durationSeconds/60)+':'+String(Math.round(r.durationSeconds)%60).padStart(2,'0'):'')+(r.excluded?' · 已排除':'');body.append(name,meta);
+      const body=document.createElement('div');body.className='record-body';const name=document.createElement('b');name.textContent=r.opponent||'手动记录';const meta=document.createElement('small');meta.textContent=new Date(r.at).toLocaleTimeString('zh-CN',{hour12:false})+' · '+(r.source==='replay'?'录像识别':r.replayKey?'手动 · 已关联录像':'手动待核对')+(Number.isFinite(r.durationSeconds)?' · '+Math.floor(r.durationSeconds/60)+':'+String(Math.round(r.durationSeconds)%60).padStart(2,'0'):'')+(r.matchType==='ai1v1'?' · 人机1v1'+(!state.ladder.config.includeAI?' · 未计入（开关关闭）':''):'')+(r.excluded?' · 已排除':'');body.append(name,meta);
       const correct=document.createElement('button');correct.textContent=r.result==='win'?'改为负':'改为胜';correct.addEventListener('click',guarded(()=>act('ladderEdit',{id:r.id,patch:{result:r.result==='win'?'loss':'win'}})));
       const exclude=document.createElement('button');exclude.textContent=r.excluded?'恢复':'排除';exclude.addEventListener('click',guarded(()=>act('ladderEdit',{id:r.id,patch:{excluded:!r.excluded}})));row.append(badge,body,correct,exclude);box.append(row);}
   }
@@ -42,6 +42,7 @@
   $('checkGame').addEventListener('click',guarded(()=>act('sc2Check')));
   for(const [id,key]of [['startDelay','sc2StartDelay'],['endDelay','sc2EndDelay']])$(id).addEventListener('change',guarded(()=>act('configure',{config:{[key]:Number($(id).value)}})));
   for(const id of ['autoTrack','previewReplayEnabled'])$(id).addEventListener('change',guarded(async()=>{await act('ladderConfigure',{config:{autoTrack:$(id).checked}});toast($(id).checked?'录像自动读取已开启':'录像自动读取已关闭，按键助手不受影响');}));
+  $('includeAI').addEventListener('change',guarded(async()=>{await act('ladderConfigure',{config:{includeAI:$('includeAI').checked}});toast($('includeAI').checked?'已计入人机1v1；可扫描今日录像补齐记录':'人机对局已从统计中移除，记录保留');}));
   $('showHUD').addEventListener('change',guarded(()=>act('ladderConfigure',{config:{showHUD:$('showHUD').checked}})));
   $('identityForm').addEventListener('input',()=>identityDirty=true);
   $('identityForm').addEventListener('submit',guarded(async e=>{e.preventDefault();const draft=typeof window!=='undefined'?window.IdentityDiscovery:null;await act('ladderConfigure',{config:{toonHandle:$('toonHandle').value,names:$('playerNames').value.split(/[\n,，]/).map(n=>n.trim()).filter(Boolean),name:$('displayName').value,race:$('playerRace').value,...(draft?.directory()?{replayDirectory:draft.directory()}:{})}});identityDirty=false;render(state);draft?.saved();toast('游戏身份已保存');}));
