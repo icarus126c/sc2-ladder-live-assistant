@@ -9,7 +9,7 @@ const {createStylePackStore}=require('./style-packs.cjs');
 const {createInteractionStore,normalizeBiliEvent}=require('./live-interactions.cjs'),{createBilibiliClient}=require('./bilibili-live.cjs');
 const {createKeyboardInput}=require('./keyboard-input.cjs');
 const {createReplayStore}=require('./ladder-replays.cjs'),{createReplayWatcher}=require('./replay-watcher.cjs'),{createSc2Monitor}=require('./sc2.cjs');
-const defaults={sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:false,obsMapping:{game:'',intermission:'',loading:'',break:'',blank:''}};
+const defaults={sc2AutoEnabled:true,sc2AutoPaused:false,sc2AutoMode:'ladder',sc2ClientPort:6119,sc2StartDelay:0,sc2EndDelay:0,sc2IncludeReplays:true,obsMapping:{game:'',intermission:'',loading:'',break:'',blank:''}};
 function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array.isArray(input))throw Error('设置格式错误');const c={...base,obsMapping:{...base.obsMapping}};
   for(const k of ['sc2AutoEnabled','sc2AutoPaused','sc2IncludeReplays'])if(k in input){if(typeof input[k]!=='boolean')throw Error('开关格式错误');c[k]=input[k];}
   for(const [k,min,max]of [['sc2ClientPort',1024,65535],['sc2StartDelay',0,10],['sc2EndDelay',0,60]])if(k in input){if(!Number.isFinite(input[k])||(k==='sc2ClientPort'&&!Number.isInteger(input[k]))||input[k]<min||input[k]>max)throw Error('切换设置超出范围');c[k]=input[k];}

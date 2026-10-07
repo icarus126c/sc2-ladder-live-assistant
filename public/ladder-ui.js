@@ -22,13 +22,13 @@
     const phases={game:'游戏画面',intermission:'搜索 / 等待',loading:'比赛载入',break:'暂离',blank:'空白场景',opening:'开场',ending:'结束'};
     $('currentScene').textContent='实时输出：'+phases[next.scene];
     document.querySelectorAll('[data-phase]').forEach(button=>{button.disabled=!connected||!!next.transition;button.setAttribute('aria-pressed',String(button.dataset.phase===next.scene));});
-    $('autoSwitch').checked=g.sc2AutoEnabled&&g.sc2AutoMode==='ladder';$('resumeAuto').disabled=!g.sc2AutoEnabled||!g.sc2AutoPaused;
+    $('autoSwitch').checked=g.sc2AutoEnabled&&g.sc2AutoMode==='ladder';$('autoReplaySwitch').checked=g.sc2IncludeReplays===true;$('resumeAuto').disabled=!g.sc2AutoEnabled||!g.sc2AutoPaused;
     $('gamePhase').textContent=a?.label||'等待检测';$('gameMessage').textContent=g.sc2AutoPaused?'自动模式已暂停，手动切画面优先':a?.message||'等待连接';
     if(document.activeElement!==$('startDelay'))$('startDelay').value=g.sc2StartDelay;if(document.activeElement!==$('endDelay'))$('endDelay').value=g.sc2EndDelay;
     renderReplays(next);$('trackingStatus').textContent=c.enabled?next.ladder.status:'助手已关闭；启用后开始监测';
     hudDraft();const list=recordScope==='session'?(next.ladder.session?.records||next.ladder.records):recordScope==='history'?(next.ladder.history||next.ladder.records):next.ladder.records;const key=JSON.stringify([list,c.includeAI===true,recordScope]);if(key!==recordKey){recordKey=key;drawRecords(list);}$('recordScopeHint').textContent=recordScope==='history'?'当前账号 · 最近500条 / 共'+(next.ladder.historyTotal??list.length)+'条':recordScope==='today'?'北京时间今天 · 最近200条':'本次直播 · 跨午夜继续累计 · 最近200条';
     if(obs.ready){obsDesired=g.obsMapping[next.scene]||'';syncOBS();}
-    ['assistantEnabled','autoSwitch','autoTrack','previewReplayEnabled','includeAI','showHUD','addWin','addLoss','undoRecord','checkGame'].forEach(id=>$(id).disabled=!connected);
+    ['assistantEnabled','autoSwitch','autoReplaySwitch','autoTrack','previewReplayEnabled','includeAI','showHUD','addWin','addLoss','undoRecord','checkGame'].forEach(id=>$(id).disabled=!connected);
     if(typeof window!=='undefined')window.Workspace?.render(next);
   }
   function drawRecords(records){const box=$('records');box.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='empty';p.textContent='这个范围内还没有战绩。';box.append(p);return;}
@@ -40,6 +40,7 @@
   $('recordScope').addEventListener('change',()=>{recordScope=$('recordScope').value;recordKey='';if(state)render(state);});
   $('assistantEnabled').addEventListener('change',guarded(async()=>{const enabled=$('assistantEnabled').checked;await act('ladderConfigure',{config:{enabled}});await act('configure',{config:enabled?{sc2AutoMode:'ladder'}:{sc2AutoMode:'ladder',sc2AutoEnabled:false}});toast(enabled?'直播工具总开关已开启，各助手沿用独立设置':'直播工具已全部暂停');}));
   $('autoSwitch').addEventListener('change',guarded(async()=>{const enabled=$('autoSwitch').checked;if(enabled&&!state.ladder.config.enabled)await act('ladderConfigure',{config:{enabled:true}});await act('configure',{config:{sc2AutoEnabled:enabled,sc2AutoMode:'ladder',sc2AutoPaused:false}});}));
+  $('autoReplaySwitch').addEventListener('change',guarded(()=>act('configure',{config:{sc2IncludeReplays:$('autoReplaySwitch').checked}})));
   $('resumeAuto').addEventListener('click',guarded(()=>act('configure',{config:{sc2AutoPaused:false}})));
   $('checkGame').addEventListener('click',guarded(()=>act('sc2Check')));
   for(const [id,key]of [['startDelay','sc2StartDelay'],['endDelay','sc2EndDelay']])$(id).addEventListener('change',guarded(()=>act('configure',{config:{[key]:Number($(id).value)}})));
