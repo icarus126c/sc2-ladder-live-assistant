@@ -91,6 +91,20 @@ def load_protocol(archive):
         return latest(), base_build
 
 
+def load_tracker_protocol(base_build):
+    try:
+        return build(base_build), None
+    except Exception:
+        # Only verified VersionedDecoder tracker streams may use a nearby schema.
+        # Never use these aliases for bit-packed init data or game events.
+        if base_build == 97579:
+            return build(95299), "compatible-97579"
+        if base_build == 98370:
+            import replay_protocol98310
+            return replay_protocol98310, "compatible-98370-via-98310"
+        raise ValueError(f"暂不支持版本 {base_build} 的单位跟踪统计")
+
+
 def parse_replay(replay_path, config):
     archive = MPQArchive(replay_path)
     protocol, base_build = load_protocol(archive)
@@ -152,21 +166,13 @@ def parse_replay(replay_path, config):
     daily_metrics = {"version": 1, "zerglings": None, "zealots": None, "workersKilled": None, "status": "unavailable", "note": "尚未确认本机玩家"}
     if not config.get("metadataOnly") and len(self_players) == 1 and len(opponents) == 1 and len(players) == 2:
         try:
-            try:
-                tracker_protocol = build(base_build)
-                compatible = False
-            except Exception:
-                # Versioned tracker schema verified against local retail 97579 replays.
-                # Never decode unknown bit-packed init/game events with this fallback.
-                if base_build != 97579:
-                    raise ValueError(f"暂不支持版本 {base_build} 的单位跟踪统计")
-                tracker_protocol, compatible = build(95299), True
+            tracker_protocol, compatible = load_tracker_protocol(base_build)
             own_id = self_players[0].get("trackerPlayerId")
             enemy_id = opponents[0].get("trackerPlayerId")
             expected = {p["trackerPlayerId"]: p["slot"] - 1 for p in players if isinstance(p.get("trackerPlayerId"), int)}
             daily_metrics = analyze_tracker(tracker_protocol.decode_replay_tracker_events(read_contents(archive, "replay.tracker.events")), own_id, {enemy_id}, expected)
             if compatible:
-                daily_metrics["decoder"] = "compatible-97579"
+                daily_metrics["decoder"] = compatible
         except Exception as error:
             daily_metrics["note"] = str(error)[:180]
 
