@@ -20,9 +20,10 @@
   function ingest(frame){model.ingest(frame,config);}
   function animate(tick){if(ready&&!widget.hidden&&tick-lastPaint>=32){lastPaint=tick;const value=model.snapshot(config),pressed=new Set(value.pressed);
     for(const key of keys){const lit=pressed.has(key.dataset.catKey);if(lit!==key.classList.contains('is-down'))key.classList.toggle('is-down',lit);}
+    if(avatar)avatar.dataset.rally=String(value.rally);widget.classList.toggle('is-rally',value.rally);
     if(lastPose!==value.pose){if(avatar)avatar.dataset.pose=String(value.pose);lastPose=value.pose;}const busy=value.rate>=5;if(lastBusy!==busy){widget.classList.toggle('is-busy',busy);lastBusy=busy;}
     if(lastCombo!==value.combo){combo.textContent=value.combo;lastCombo=value.combo;}
-    const text=config.catView==='flat'?(value.active?'按键响应中':'等待按键'):value.active?(value.rate>=5?'啪嗒啪嗒！':(config.catCharacter==='naiwa'?'哟嚯 · 敲击中':config.catCharacter==='nahida'?'叶间 · 哒哒':['vesna','nicole','custom'].includes(config.catCharacter)?'轻敲 · 哒哒':'喵 · 敲击中')):(config.catCharacter==='naiwa'?'呱 · 等待按键':['vesna','nahida','nicole','custom'].includes(config.catCharacter)?'等待按键':'喵 · 等待按键');if(lastRhythm!==text){rhythm.textContent=text;lastRhythm=text;}
+    const text=value.rally?'集结部队！':config.catView==='flat'?(value.active?'按键响应中':'等待按键'):value.active?(value.rate>=5?'啪嗒啪嗒！':(config.catCharacter==='naiwa'?'哟嚯 · 敲击中':config.catCharacter==='nahida'?'叶间 · 哒哒':['vesna','nicole','artanis','custom'].includes(config.catCharacter)?'轻敲 · 哒哒':'喵 · 敲击中')):(config.catCharacter==='naiwa'?'呱 · 等待按键':['vesna','nahida','nicole','artanis','custom'].includes(config.catCharacter)?'等待按键':'喵 · 等待按键');if(lastRhythm!==text){rhythm.textContent=text;lastRhythm=text;}
   }requestAnimationFrame(animate);}
   window.CatKeyboardOverlay={render,ingest};requestAnimationFrame(animate);
   if(document.body.dataset.catSource==='true'){

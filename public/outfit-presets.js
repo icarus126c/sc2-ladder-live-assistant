@@ -2,7 +2,7 @@
   const modules={gameframe:'游戏边框',catkeyboard:'按键小助手',scoreboard:'战绩计分器',overlay:'信息栏',waiting:'等待画面',break:'暂离画面'};
   const presets={
     anes:{name:'ANES · 蓝金主场',note:'战队队标、蓝金边框与同色猫娘键帽',scene:'team',frame:'anes',cat:'cat',accent:'#e6bc5c',score:'bluegold',hud:'bluegold',colors:['#081526','#203d64','#e6bc5c']},
-    protoss:{name:'星灵 · 大主教与狂热者',note:'同一套金白装甲与蓝色灵能，双角色舞台、信息保护控制台',scene:'protoss',frame:'artanis',cat:'cat',accent:'#72d9ef',score:'compact',hud:'compact',colors:['#080f1c','#264760','#72d9ef'],assets:{cover:'/assets/artanis-character-v1.png'}},
+    protoss:{name:'星灵 · 大主教与狂热者',note:'同一套金白装甲与蓝色灵能，双角色舞台、丰富控制台与 Q 版大主教助手',scene:'protoss',frame:'artanis',cat:'artanis',accent:'#72d9ef',score:'compact',hud:'compact',colors:['#080f1c','#264760','#72d9ef'],assets:{cover:'/assets/artanis-character-v1.png'}},
     starcraft:{name:'星际 · 深空指挥',note:'深空背景、轻量窄框与冰蓝猫娘键帽',scene:'starcraft',frame:'slim',cat:'cat',accent:'#74d9ed',score:'dual',hud:'compact',colors:['#07111d','#183c5c','#74d9ed']},
     naiwa:{name:'奶蛙 · 呱呱出击',note:'人形奶蛙、恶搞边框与黄绿舞台',scene:'naiwa',frame:'naiwa',cat:'naiwa',accent:'#efd253',score:'dual',hud:'compact',colors:['#1c210c','#535a21','#f2d34f']},
     nahida:{name:'纳西妲 · 叶间微光',note:'纳西妲助手、叶饰边框与柔绿舞台',scene:'nahida',frame:'nahida',cat:'nahida',accent:'#c5dc8e',score:'compact',hud:'compact',colors:['#10251e','#3e6345','#c5dc8e']},
@@ -19,7 +19,7 @@
     return{preset:input.preset,modules:[...selected],...options};
   }
   const combinationFields={
-    gameframe:['gameFrameStyle','gameFrameAccent','gameFrameImage'],
+    gameframe:['gameFrameCoverage','gameFrameStyle','gameFrameAccent','gameFrameImage'],
     catkeyboard:['catCharacter','catAccent','catFrontImage','catRearImage'],
     scoreboard:['scoreboardTemplate','scoreboardAccent','scoreboardOpacity','scoreboardPanelOpacity'],
     overlay:['template','accent'],

@@ -43,24 +43,30 @@
     const touchboard=`<div class="cat-touchboard" aria-hidden="true">${[0,1,2].map(()=>'<div>'+Array(9).fill('<i></i>').join('')+'</div>').join('')}<div class="cat-touchboard-bottom"><i></i><i class="cat-touchboard-space"></i><i></i></div></div>`;
     return `<div class="cat-stage cat-split" data-keyboard-side="${side}"><div class="cat-character-view"><div class="cat-avatar" role="img" aria-label="猫娘面对自己的键盘拍键" data-pose="0"></div>${touchboard}</div><div class="cat-keyboard-view"><span class="cat-side-label">${side==='right'?'右半键盘':'左半键盘'}</span><div class="cat-board-angle"><div class="cat-board"><div class="cat-main-keys">${renderRows(halfRows[side])}</div>${side==='right'?navigation():''}</div>${mouse()}</div></div>${caption()}</div>`;
   }
-  function build(c={}){const character=['cat','vesna','naiwa','nahida','nicole','custom'].includes(c.catCharacter)?c.catCharacter:'cat',name={cat:'猫娘',vesna:'薇斯纳',naiwa:'奶蛙',nahida:'纳西妲',nicole:'尼可',custom:'自定义角色'}[character],idle=character==='cat'?'喵 · 等待按键':character==='naiwa'?'呱 · 等待按键':'等待按键';return buildBase(c).replace('class="cat-stage ','class="cat-stage cat-character-'+character+(c.catCurve!==false&&c.catView!=='flat'?' cat-curved':'')+' ').replaceAll('猫娘',name).replaceAll('喵 · 等待按键',idle);}
+  function build(c={}){const character=['cat','vesna','naiwa','nahida','nicole','artanis','custom'].includes(c.catCharacter)?c.catCharacter:'cat',name={cat:'猫娘',vesna:'薇斯纳',naiwa:'奶蛙',nahida:'纳西妲',nicole:'尼可',artanis:'大主教',custom:'自定义角色'}[character],idle=character==='cat'?'喵 · 等待按键':character==='naiwa'?'呱 · 等待按键':'等待按键';return (buildBase(c)+(character==='artanis'&&c.catView!=='flat'?'<div class="cat-rally-callout" aria-hidden="true">集结部队</div>':'')).replace('class="cat-stage ','class="cat-stage cat-character-'+character+(c.catCurve!==false&&c.catView!=='flat'?' cat-curved':'')+' ').replaceAll('猫娘',name).replaceAll('喵 · 等待按键',idle);}
   function createModel({now=Date.now}={}){
-    let down=new Set(),glow=new Map(),taps=[],lastTap=-Infinity,lastSequence=-1,parity=0,status='waiting';
+    let down=new Set(),glow=new Map(),taps=[],lastTap=-Infinity,lastSequence=-1,parity=0,status='waiting',rawDown=new Set(),rallyUntil=-Infinity,rallyBinding='',rallyHeld=false;
+    const validKeys=new Set([...rows.flat().map(([id])=>id),'Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2']);
+    function binding(c){return c.catCharacter==='artanis'&&validKeys.has(c.catRallyKey)?c.catRallyKey:'';}
+    function syncBinding(c){const next=binding(c);if(next!==rallyBinding){rallyBinding=next;rallyUntil=-Infinity;rallyHeld=false;}}
     function ingest(frame,c={}){
-      if(!frame||frame.sequence===lastSequence)return;lastSequence=frame.sequence;status=frame.status;
-      if(status!=='active'){down.clear();glow.clear();taps=[];lastTap=-Infinity;return;}
-      const current=new Set((frame.pressed||[]).filter(k=>selected(k,c)&&(rows.some(row=>row.some(([id])=>id===k))||['Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2'].includes(k)))),at=now();
+      syncBinding(c);if(!frame||frame.sequence===lastSequence)return;lastSequence=frame.sequence;status=frame.status;
+      if(status!=='active'){down.clear();glow.clear();taps=[];lastTap=-Infinity;rawDown.clear();rallyUntil=-Infinity;rallyHeld=false;return;}
+      const at=now(),raw=new Set((frame.pressed||[]).filter(k=>validKeys.has(k)));
+      if(rallyBinding&&raw.has(rallyBinding)&&!rawDown.has(rallyBinding)){rallyUntil=at+(c.catRallyHold??1000);rallyHeld=true;}
+      if(rallyHeld&&!raw.has(rallyBinding)){rallyUntil=Math.max(rallyUntil,at+(c.catRallyHold??1000));rallyHeld=false;}rawDown=raw;
+      const current=new Set((frame.pressed||[]).filter(k=>selected(k,c)&&(rows.some(row=>row.some(([id])=>id===k))||['Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2'].includes(k))));
       const fresh=[...current].filter(k=>!down.has(k));
       taps=taps.filter(t=>at-t<1000);
       if(fresh.length){taps.push(at);lastTap=at;parity=1-parity;}
       for(const k of current)glow.set(k,at+(c.catHold??300));down=current;
     }
     function snapshot(c={}){
-      const at=now();taps=taps.filter(t=>at-t<1000);for(const [key,expires]of glow)if(expires<=at&&!down.has(key))glow.delete(key);
+      syncBinding(c);const at=now();taps=taps.filter(t=>at-t<1000);for(const [key,expires]of glow)if(expires<=at&&!down.has(key))glow.delete(key);
       const rate=taps.length,age=at-lastTap,active=age<Math.max(160,Math.min(420,1000/Math.max(1,rate)));
       const pose=active?(rate>3?1+(Math.floor(age/Math.max(65,180-rate*8))%2):(parity?1:2)):0;
       const pressed=[...glow.keys()].filter(k=>selected(k,c));const current=[...down].filter(k=>selected(k,c));const raw=current.length?current:pressed;const combo=[...new Set(raw.map(k=>labels[k]||k))].slice(0,6).join(' + ');
-      return{pressed,pose,rate,status,combo:combo||'准备好啦',active};
+      return{rally:!!rallyBinding&&c.catView!=='flat'&&status==='active'&&(rallyHeld||at<rallyUntil),pressed,pose,rate,status,combo:combo||'准备好啦',active};
     }
     return{ingest,snapshot};
   }

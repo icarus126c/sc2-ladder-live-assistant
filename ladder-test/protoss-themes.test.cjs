@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {createReplayStore,sanitize,defaults}=require('../ladder-replays.cjs'),frame=require('../public/gameframe-template.js'),protoss=require('../public/protoss-console.js'),themes=require('../public/scene-themes.js'),packs=require('../public/outfit-presets.js'),{createAssistant}=require('../ladder-server.cjs');
 test('Protoss console protects HUD information in fixed screen coordinates under extreme decorative transforms',()=>{
  for(const style of ['artanis','zealot'])for(const transform of [{},{gameFrameScale:115,gameFrameX:-120,gameFrameY:-80,gameFrameDecorationScale:140},{gameFrameScale:70,gameFrameX:120,gameFrameY:60}]){
-  const svg=frame.build({...defaults,gameFrameStyle:style,...transform});assert.match(svg,new RegExp('data-frame-theme="'+style+'"'));assert.match(svg,/<g mask="url\(#protoss-information-mask\)"><g opacity=/);assert.match(svg,/maskUnits="userSpaceOnUse"/);assert.match(svg,/data-protected="playfield"/);
+  const svg=frame.build({...defaults,gameFrameStyle:style,gameFrameCoverage:'safe',...transform});assert.match(svg,new RegExp('data-frame-theme="'+style+'"'));assert.match(svg,/<g mask="url\(#protoss-information-mask\)"><g opacity=/);assert.match(svg,/maskUnits="userSpaceOnUse"/);assert.match(svg,/data-protected="playfield"/);
   for(const p of protoss.safeAreas)assert.ok(svg.includes(`data-protected="${p.name}" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" fill="black"`),p.name);
   assert.doesNotMatch(svg,/<image|<foreignObject/);
  }

@@ -12,7 +12,7 @@
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
   views.tutorial={name:'使用教程',title:'从这里，开始你的直播。',eyebrow:'新手指南',description:'接入直播姬 / OBS，连接自己的录像与账号。每一步都能直接跳转到设置。'};
   views.sponsor={name:'赞助与合作',title:'支持下一场好比赛。',eyebrow:'AENEAS / SUPPORT',description:'支持选手、赛事与工具，也欢迎品牌合作。'};
-  const frameFields=['gameFrameStyle','gameFrameAccent','gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations','gameFrameDecorationScale','gameFrameMemeText'];
+  const frameFields=['gameFrameCoverage','gameFrameStyle','gameFrameAccent','gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations','gameFrameDecorationScale','gameFrameMemeText'];
   const frameNumbers=new Set(['gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameDecorationScale']);
   const scoreFields=['scoreboardAccent','scoreboardTemplate','scoreboardX','scoreboardY','scoreboardWidth','scoreboardScale','scoreboardOpacity','scoreboardPanelOpacity','scoreboardDetails'];
   let state,connected=false,scoreboardDirty=false,frameDirty=false,mainTextDirty=false;
@@ -85,7 +85,7 @@
   function updateFramePreview(){
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
     $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
-    $('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
+    $('gameFrameCoverageField').hidden=!['artanis','zealot'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
     $('gameFrameDraftStatus').textContent=frameDirty?'预览草稿 · 尚未应用':'已保存';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));
     for(const id of ['gameFramePreview','gameFrameFullPreview'])if(state)$(id).contentWindow?.postMessage({type:'gameFrameDraft',config},location.origin);
