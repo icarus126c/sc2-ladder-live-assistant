@@ -35,16 +35,17 @@
   for(const button of document.querySelectorAll('[data-cat-view]'))button.addEventListener('click',()=>{$('catView').value=button.dataset.catView;dirty=true;update();});
   $('catForm').addEventListener('submit',event=>{event.preventDefault();perform(async()=>{const next=await window.AssistantActions.act('ladderConfigure',{config:config()});dirty=false;render(next);window.AssistantActions.toast('按键助手设置已应用');});});
   $('catDiscard').addEventListener('click',()=>{dirty=false;if(state)render(state);});
-  for(const id of ['homeCatEnabled','catEnabled','previewCatEnabled'])$(id).addEventListener('change',()=>perform(async()=>{const next=await window.AssistantActions.act('ladderConfigure',{config:{catEnabled:$(id).checked}});render(next);window.AssistantActions.toast($(id).checked?'按键助手已开启，切到星际2即可响应':'按键助手已关闭');}));
+  for(const id of ['homeCatEnabled','catEnabled','previewCatEnabled'])$(id).addEventListener('change',()=>perform(async()=>{const next=await window.AssistantActions.act('ladderConfigure',{config:{catEnabled:$(id).checked}});render(next);window.AssistantActions.toast($(id).checked?(next.ladder.config.catGlobalInput?'按键助手已开启 · 全局响应':'按键助手已开启，切到星际2即可响应'):'按键助手已关闭');}));
+  $('catGlobalInput').addEventListener('change',()=>perform(async()=>{const on=$('catGlobalInput').checked;const next=await window.AssistantActions.act('ladderConfigure',{config:{catGlobalInput:on}});render(next);window.AssistantActions.toast(on?'全局按键响应已开启':'已恢复仅星际2前台响应');}));
   $('catResume').addEventListener('click',()=>perform(()=>window.AssistantActions.act('catResume')));
   for(const button of document.querySelectorAll('[data-cat-position]'))button.addEventListener('click',()=>{const positions={right:[1400,320],left:[45,320],bottom:[660,700]},[x,y]=positions[button.dataset.catPosition];$('catX').value=x;$('catY').value=y;dirty=true;update();});
   for(const id of ['catDetailPreview','catPositionPreview'])$(id).addEventListener('load',update);
-  function render(next){state=next;const c=next.ladder.config;
+  function render(next){state=next;const c=next.ladder.config;$('catGlobalInput').checked=c.catGlobalInput===true;const inputStatus=next.keyboard?.status==='active'&&c.catGlobalInput?'正在响应全部窗口按键':statusText[next.keyboard?.status]||statusText.waiting;
     for(const id of ['homeCatEnabled','catEnabled','previewCatEnabled'])$(id).checked=c.catEnabled===true;$('catToolState').textContent=c.catEnabled?'已启用':'未启用';
-    $('catInputStatus').textContent=statusText[next.keyboard?.status]||statusText.waiting;$('previewCatStatus').textContent=!c.enabled?'已暂停 · 直播工具总开关关闭':statusText[next.keyboard?.status]||statusText.waiting;
+    $('catInputStatus').textContent=inputStatus;$('previewCatStatus').textContent=!c.enabled?'已暂停 · 直播工具总开关关闭':inputStatus;
     if(!dirty)for(const key of fields){const input=$(key);if(input.type==='checkbox')input.checked=c[key];else input.value=c[key];}
     $('catSourceURL').value=location.origin+'/cat-keyboard';update();
   }
-  function connection(connected){for(const id of ['homeCatEnabled','catEnabled','previewCatEnabled','catApply','catResume'])$(id).disabled=!connected;for(const key of fields)$(key).disabled=!state;for(const b of document.querySelectorAll('[data-cat-view],[data-cat-position]'))b.disabled=!state;}
+  function connection(connected){for(const id of ['homeCatEnabled','catEnabled','previewCatEnabled','catApply','catResume','catGlobalInput'])$(id).disabled=!connected;for(const key of fields)$(key).disabled=!state;for(const b of document.querySelectorAll('[data-cat-view],[data-cat-position]'))b.disabled=!state;}
   window.CatWorkspace={render,connection,route(next){view=next;if(view!=='catkeyboard'){stopDemo();stopRecording();}}};connection(false);
 })();

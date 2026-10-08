@@ -10,6 +10,10 @@ test('live preview keyboard and replay switches are independent and sync with th
  for(const file of ['ladder-ui.js','cat-workspace.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+file),'utf8'),context);
  events.onopen();events.onmessage({data:JSON.stringify(state)});await new Promise(setImmediate);
  assert.equal(node('previewCatEnabled').checked,true);assert.equal(node('previewReplayEnabled').checked,true);
+ assert.equal(node('catGlobalInput').checked,false);node('catGlobalInput').checked=true;await node('catGlobalInput').change();assert.deepEqual(submitted.at(-1),{catGlobalInput:true});assert.equal(state.ladder.config.catGlobalInput,true);
+ state.keyboard.status='active';win.CatWorkspace.render(state);assert.equal(node('catInputStatus').textContent,'正在响应全部窗口按键');assert.equal(node('previewCatStatus').textContent,'正在响应全部窗口按键');
+ node('catGlobalInput').checked=false;await node('catGlobalInput').change();assert.deepEqual(submitted.at(-1),{catGlobalInput:false});assert.equal(state.ladder.config.catGlobalInput,false);assert.equal(state.ladder.config.catEnabled,true);
+
  node('previewReplayEnabled').checked=false;await node('previewReplayEnabled').change();assert.deepEqual(submitted.at(-1),{autoTrack:false});assert.equal(state.ladder.config.catEnabled,true);assert.equal(node('autoTrack').checked,false);
  node('previewCatEnabled').checked=false;await node('previewCatEnabled').change();assert.deepEqual(submitted.at(-1),{catEnabled:false});assert.equal(state.ladder.config.autoTrack,false);assert.equal(node('homeCatEnabled').checked,false);assert.equal(node('catEnabled').checked,false);
  node('autoTrack').checked=true;await node('autoTrack').change();assert.equal(node('previewReplayEnabled').checked,true);assert.equal(node('previewCatEnabled').checked,false);

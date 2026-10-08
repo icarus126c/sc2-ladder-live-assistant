@@ -15,12 +15,12 @@ function createKeyboardInput({getConfig,onUpdate=()=>{},spawnWorker=spawn,now=Da
   }
   function stop(){generation++;if(child){const previous=child;child=null;previous.kill();}}
   function configure({reset=false}={}){
-    if(closed)return;const c=getConfig(),next=JSON.stringify([c.enabled!==false,c.catEnabled===true,c.catChatGuard!==false]);
+    if(closed)return;const c=getConfig(),next=JSON.stringify([c.enabled!==false,c.catEnabled===true,c.catChatGuard!==false,c.catGlobalInput===true]);
     if(next===signature&&!reset){if(child)publish(frame.status,filteredKeys(frame.pressed,c));return;}
     signature=next;stop();if(c.enabled===false||c.catEnabled!==true){publish('disabled');return;}
     const epoch=generation;publish('starting');let buffer='';lastMessage=now();
     try{
-      child=spawnWorker(require('./runtime-paths.cjs').python(),['-X','utf8',path.join(__dirname,'capture-keyboard.py'),'--parent-pid',String(process.pid),...(c.catChatGuard===false?['--no-chat-guard']:[])],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+      child=spawnWorker(require('./runtime-paths.cjs').python(),['-X','utf8',path.join(__dirname,'capture-keyboard.py'),'--parent-pid',String(process.pid),...(c.catChatGuard===false?['--no-chat-guard']:[]),...(c.catGlobalInput===true?['--global-input']:[])],{windowsHide:true,stdio:['ignore','pipe','pipe']});
       const worker=child;worker.stdout.setEncoding('utf8');worker.stdout.on('data',text=>{
         if(epoch!==generation||closed)return;buffer+=text;if(buffer.length>8192){stop();publish('error');return;}
         let end;while((end=buffer.indexOf('\n'))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);try{

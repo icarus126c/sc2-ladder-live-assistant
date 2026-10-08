@@ -1,4 +1,4 @@
-"""Read allowlisted key states only while the foreground process is StarCraft II.
+"""Read allowlisted key states for StarCraft II, or all windows when opted in.
 
 No hook, injection, file logging, text reconstruction or network access is used.
 Only the current frame is emitted to the parent assistant process.
@@ -43,9 +43,24 @@ class ChatGuard:
         return self.paused
 
 
+
+def capture_frame(focused, global_input, guard, read_key):
+    """Chat protection applies to the game; other windows never toggle it."""
+    if not focused and not global_input:
+        guard.update(False)
+        return {"status": "waiting", "pressed": []}
+    chat = guard.update(focused, read_key(13) if focused else False,
+                        read_key(27) if focused else False)
+    if focused and chat:
+        return {"status": "chat", "pressed": []}
+    return {"status": "active",
+            "pressed": [key for key, vk in KEYS.items() if read_key(vk)]}
+
+
 def main():
     args = argparse.ArgumentParser()
     args.add_argument("--no-chat-guard", action="store_true")
+    args.add_argument("--global-input", action="store_true")
     args.add_argument("--once", action="store_true")
     args.add_argument("--parent-pid", type=int)
     options = args.parse_args()
@@ -99,14 +114,7 @@ def main():
         if tick - last_focus >= 0.08:
             focused = foreground_game()
             last_focus = tick
-        if focused:
-            enter, escape = down(13), down(27)
-            chat = guard.update(True, enter, escape)
-            frame = {"status": "chat" if chat else "active",
-                     "pressed": [] if chat else [key for key, vk in KEYS.items() if down(vk)]}
-        else:
-            guard.update(False)
-            frame = {"status": "waiting", "pressed": []}
+        frame = capture_frame(focused, options.global_input, guard, down)
         if frame != previous or tick - last_emit >= 0.5:
             print(json.dumps(frame), flush=True)
             previous, last_emit = frame, tick

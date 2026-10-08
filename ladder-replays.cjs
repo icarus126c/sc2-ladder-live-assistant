@@ -13,7 +13,7 @@ const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.de
   gameFrameMinimap:true,gameFrameSelection:true,gameFramePortrait:true,gameFrameCommands:true,
   gameFrameCoverage:'rich',gameFrameDecorations:true,gameFrameDecorationScale:100,gameFrameMemeText:'优势在我！',
   catEnabled:false,catView:'rear',catCharacter:'cat',catFrontImage:'',catRearImage:'',catCurve:true,catKeyboardSide:'left',catX:1400,catY:320,catWidth:460,catOpacity:100,catAccent:'#f2a7d5',catRallyKey:'',catRallyHold:1000,catHold:300,catHints:true,
-  catLetters:true,catNumbers:true,catFunctions:true,catModifiers:true,catNavigation:true,catMouse:true,catChatGuard:true};
+  catLetters:true,catNumbers:true,catFunctions:true,catModifiers:true,catNavigation:true,catMouse:true,catChatGuard:true,catGlobalInput:false};
 const validMMR=n=>Number.isInteger(n)&&n>0&&n<=20000;
 const race=r=>({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R',Terr:'T',Prot:'P'})[r]||r;
 function sanitize(input,base=defaults){
@@ -33,7 +33,7 @@ function sanitize(input,base=defaults){
   if('gameFrameCoverage'in input){if(!['safe','rich'].includes(input.gameFrameCoverage))throw Error('请选择有效的装饰范围');c.gameFrameCoverage=input.gameFrameCoverage;}
   if('gameFrameDecorationScale'in input){if(!Number.isInteger(input.gameFrameDecorationScale)||input.gameFrameDecorationScale<50||input.gameFrameDecorationScale>140)throw Error('装饰大小请填50～140');c.gameFrameDecorationScale=input.gameFrameDecorationScale;}
   if('gameFrameMemeText'in input){if(typeof input.gameFrameMemeText!=='string'||[...input.gameFrameMemeText].length>16||/[\r\n\0]/.test(input.gameFrameMemeText))throw Error('恶搞文字最多16字，不能换行');c.gameFrameMemeText=input.gameFrameMemeText.trim();}
-  for(const key of ['catEnabled','catCurve','catHints','catLetters','catNumbers','catFunctions','catModifiers','catNavigation','catMouse','catChatGuard'])if(key in input){if(typeof input[key]!=='boolean')throw Error('按键助手开关格式不正确');c[key]=input[key];}
+  for(const key of ['catEnabled','catCurve','catHints','catLetters','catNumbers','catFunctions','catModifiers','catNavigation','catMouse','catChatGuard','catGlobalInput'])if(key in input){if(typeof input[key]!=='boolean')throw Error('按键助手开关格式不正确');c[key]=input[key];}
   if('catCharacter'in input){if(!['cat','vesna','naiwa','nahida','nicole','artanis','custom'].includes(input.catCharacter))throw Error('按键助手角色不正确');c.catCharacter=input.catCharacter;}
   for(const [key,min,max]of [['catX',0,1600],['catY',0,820],['catWidth',280,760],['catOpacity',20,100],['catHold',120,1000],['catRallyHold',300,3000]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('猫娘助手外观数值超出范围');c[key]=input[key];}
   if('catRallyKey'in input){if(typeof input.catRallyKey!=='string'||(input.catRallyKey!==''&&!require('./keyboard-input.cjs').keyList.includes(input.catRallyKey)))throw Error('请选择有效的集结触发键');c.catRallyKey=input.catRallyKey;}

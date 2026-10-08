@@ -3,11 +3,11 @@ const {createReplayStore,sanitize,defaults}=require('../ladder-replays.cjs'),{cr
 function worker(){const w=new EventEmitter();w.stdout=new PassThrough();w.stderr=new PassThrough();w.killed=false;w.kill=()=>w.killed=true;return w;}
 test('cat settings persist independently, and reject invalid sizes, colors and switches',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cat-settings-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const file=path.join(dir,'records.json'),store=createReplayStore(file);store.add('win');store.updateMMR(4600);
-  assert.equal(defaults.catView,'rear');assert.equal((template.build().match(/class="cat-board"/g)||[]).length,1);assert.equal(defaults.catKeyboardSide,'left');
-  store.configure({catEnabled:true,catView:'classic',catKeyboardSide:'right',catWidth:520,catHold:500,catX:30,catFunctions:false,scoreboardEnabled:false,showHUD:false});const saved=createReplayStore(file).snapshot();
-  assert.equal(saved.config.catView,'classic');assert.equal(saved.config.catKeyboardSide,'right');
+  assert.equal(defaults.catGlobalInput,false);assert.equal(defaults.catView,'rear');assert.equal((template.build().match(/class="cat-board"/g)||[]).length,1);assert.equal(defaults.catKeyboardSide,'left');
+  store.configure({catEnabled:true,catGlobalInput:true,catView:'classic',catKeyboardSide:'right',catWidth:520,catHold:500,catX:30,catFunctions:false,scoreboardEnabled:false,showHUD:false});const saved=createReplayStore(file).snapshot();
+  assert.equal(saved.config.catGlobalInput,true);assert.equal(saved.config.catView,'classic');assert.equal(saved.config.catKeyboardSide,'right');
   assert.equal(saved.config.catWidth,520);assert.equal(saved.config.catFunctions,false);assert.equal(saved.config.catEnabled,true);assert.equal(saved.stats.wins,1);assert.equal(saved.config.mmr,4600);assert.equal(saved.config.showHUD,false);assert.equal(saved.config.scoreboardEnabled,false);
-  for(const c of [{catEnabled:'true'},{catView:'unknown'},{catKeyboardSide:'both'},{catHold:0},{catWidth:100},{catX:-1},{catY:821},{catOpacity:101},{catAccent:'url(x)'},{catChatGuard:1}])assert.throws(()=>sanitize(c));
+  for(const c of [{catEnabled:'true'},{catView:'unknown'},{catKeyboardSide:'both'},{catHold:0},{catWidth:100},{catX:-1},{catY:821},{catOpacity:101},{catAccent:'url(x)'},{catChatGuard:1},{catGlobalInput:'true'}])assert.throws(()=>sanitize(c));
 });
 test('keyboard worker only starts when enabled, filters frames, clears on focus loss, and stops on disable',t=>{
   let c={...defaults},spawns=0,last;const input=createKeyboardInput({getConfig:()=>c,spawnWorker:()=>{spawns++;return last=worker();}});t.after(()=>input.close());input.configure();assert.equal(spawns,0);
@@ -64,4 +64,31 @@ test('server serves the new tool, streams live frames separately, and requires a
   const state=await(await fetch(root+'/api/state')).json();assert.equal(state.keyboard.status,'active');assert.equal(state.keyboard.pressed,undefined,'main config stream does not carry keystrokes');
   for(const route of ['/cat-keyboard','/cat-keyboard.js','/cat-keyboard.css','/cat-keyboard-template.js','/cat-workspace.js','/assets/cat-keyboard-v2.png','/assets/cat-keyboard-rear-v1.png'])assert.equal((await fetch(root+route)).status,200,route);
   assert.match(await(await fetch(root+'/output')).text(),/id="catWidget"/);
+});
+
+test('global capture requires explicit opt-in and switching scope restarts the worker and clears held keys',t=>{
+ let c={...defaults,catEnabled:true},spawns=[];const input=createKeyboardInput({getConfig:()=>c,spawnWorker:(exe,args)=>{const w=worker();spawns.push({w,args});return w;}});t.after(()=>input.close());
+ input.configure();assert.ok(!spawns[0].args.includes('--global-input'));spawns[0].w.stdout.write('{"status":"active","pressed":["Q"]}\n');
+ c.catGlobalInput=true;input.configure();assert.equal(spawns.length,2);assert.equal(spawns[0].w.killed,true);assert.ok(spawns[1].args.includes('--global-input'));assert.equal(input.snapshot().status,'starting');assert.deepEqual(input.snapshot().pressed,[]);
+ spawns[0].w.stdout.write('{"status":"active","pressed":["W"]}\n');assert.equal(input.snapshot().status,'starting');spawns[1].w.stdout.write('{"status":"active","pressed":["A"]}\n');assert.deepEqual(input.snapshot().pressed,['A']);
+ c.catGlobalInput=false;input.configure();assert.equal(spawns[1].w.killed,true);assert.ok(!spawns[2].args.includes('--global-input'));assert.deepEqual(input.snapshot().pressed,[]);
+ c.catEnabled=false;input.configure();assert.equal(spawns[2].w.killed,true);assert.equal(input.snapshot().status,'disabled');
+});
+test('global capture reads other windows only when opted in; non-game Enter never toggles game chat guard',()=>{
+ const script=path.join(__dirname,'../capture-keyboard.py');const code=`
+import importlib.util
+s=importlib.util.spec_from_file_location('capture',r'${script}'); m=importlib.util.module_from_spec(s); s.loader.exec_module(m)
+g=m.ChatGuard(); reads=[]
+def down(vk):
+ reads.append(vk)
+ return vk in (65,13)
+assert m.capture_frame(False,False,g,down)=={'status':'waiting','pressed':[]}
+assert reads==[]
+f=m.capture_frame(False,True,g,down); assert f['status']=='active' and 'A' in f['pressed'] and 'Enter' in f['pressed']; assert not g.paused
+assert m.capture_frame(True,True,g,down)=={'status':'chat','pressed':[]}; assert g.paused
+f=m.capture_frame(False,True,g,down); assert f['status']=='active' and 'A' in f['pressed']; assert g.paused
+assert m.capture_frame(True,True,g,lambda vk:vk==27)['status']=='active'; assert not g.paused
+assert m.capture_frame(True,False,m.ChatGuard(False),down)['status']=='active'
+print('global scope and game chat protection OK')
+`;assert.match(execFileSync(require('../runtime-paths.cjs').python(),['-X','utf8','-c',code],{encoding:'utf8'}),/protection OK/);
 });
