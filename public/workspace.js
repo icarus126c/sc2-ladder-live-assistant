@@ -5,8 +5,8 @@
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
   views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增大主教与狂热者星灵控制台，信息保护镂空保留小地图、单位与技能；可预览调整装甲边沿。'};
-  views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'游戏小工具',description:'只替换矿物、瓦斯与人口图标，原版数字保持透明。预览调整后再应用。'};
-  views.catkeyboard={name:'按键小助手',title:'按键小助手',eyebrow:'直播互动',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
+  views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'小助手 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
+  views.catkeyboard={name:'小助手',title:'小助手',eyebrow:'按键与资源',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
   views.liveinteraction={name:'直播间互动',title:'让直播间一起参与。',eyebrow:'B站联动',description:'接收礼物、计算收益，使用弹幕口令邀请观众参与抽奖。'};
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
@@ -20,9 +20,9 @@
   const mainSwitches={mainFrameEnabled:'gameFrameEnabled',mainScoreEnabled:'scoreboardEnabled',mainDailyEnabled:'dailyEnabled',mainHUDEnabled:'showHUD'},mainTextFields={mainWaitingTitle:'waitingTitle',mainWaitingNote:'waitingNote',mainBreakTitle:'breakTitle',mainBreakNote:'breakNote',mainWaitingShowText:'waitingShowText',mainBreakShowText:'breakShowText'};
   function route(){const key=location.hash.slice(1);const view=Object.hasOwn(views,key)?key:'console',meta=views[view];
     for(const panel of document.querySelectorAll('[data-view]')){panel.hidden=panel.dataset.view!==view;for(const frame of panel.querySelectorAll('iframe[data-src]')){const target=panel.hidden?'about:blank':frame.dataset.src;if(frame.getAttribute('src')!==target)frame.setAttribute('src',target);}}
-    for(const link of document.querySelectorAll('[data-route]')){if(link.dataset.route===view)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
+    for(const link of document.querySelectorAll('[data-route]')){if(link.dataset.route===view||(link.dataset.route==='catkeyboard'&&view==='resources'))link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
     $('breadcrumb').textContent=meta.name;$('viewTitle').textContent=meta.title;$('viewEyebrow').textContent=meta.eyebrow;$('viewDescription').textContent=meta.description;$('backTools').hidden=view==='console';$('homeShortcuts').hidden=view!=='console';document.body.dataset.workspaceView=view;document.title=meta.name+' · 天梯直播工作室';
-    if(['waiting','break','gameframe','overlay','catkeyboard'].includes(view)){$('backTools').href='#scenes';$('backTools').textContent='返回画面自定义';}else{$('backTools').href='#console';$('backTools').textContent='返回直播预览';}
+    if(['waiting','break','gameframe','overlay','catkeyboard','resources'].includes(view)){$('backTools').href='#scenes';$('backTools').textContent='返回画面自定义';}else{$('backTools').href='#console';$('backTools').textContent='返回直播预览';}
     window.scrollTo({top:0,behavior:'instant'});window.CatWorkspace?.route(view);
   }
   addEventListener('hashchange',route);route();
