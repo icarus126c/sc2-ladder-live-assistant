@@ -1,6 +1,6 @@
 (()=>{
   const widget=document.getElementById('catWidget');if(!widget)return;
-  widget.innerHTML=window.CatKeyboardTemplate.build();const model=window.CatKeyboardTemplate.createModel();let config={},scene='intermission',preview=false,standalone=false,ready=false,lastCombo='',lastRhythm='',lastPose=-1,lastBusy=false,lastPaint=0;
+  widget.innerHTML=window.CatKeyboardTemplate.build();const model=window.CatKeyboardTemplate.createModel();let config={},scene='intermission',preview=false,standalone=false,ready=false,lastCombo='',lastRhythm='',lastPose=-1,lastBusy=false,lastPaint=0,demoEmoteUntil=0;
   let layout='',keys,avatar,combo,rhythm,inputEvents=null;
   function inputConnection(){
     const needed=!widget.hidden&&!preview;
@@ -15,12 +15,13 @@
     widget.style.left=(config.catX??1400)+'px';widget.style.top=(config.catY??320)+'px';widget.style.transform=`scale(${(config.catWidth??460)/570})`;
     widget.style.opacity=(config.catOpacity??100)/100;widget.style.setProperty('--cat-accent',config.catAccent||'#f2a7d5');
     if(avatar&&config.catCharacter==='nicole'){avatar.style.backgroundImage='url("/assets/nicole-keys-v1.png")';}else if(avatar&&config.catCharacter==='custom'){const url=config.catView==='rear'?config.catRearImage:config.catFrontImage;const safe=/^\/style-assets\/[a-f\d]{64}\.png$/.test(url||'');avatar.style.backgroundImage=safe?`url("${url}")`:'none';}else if(avatar)avatar.style.backgroundImage='';
+    const bubble=widget.querySelector('.cat-emote-callout');if(bubble){bubble.textContent=config.catEmoteText??'♥';bubble.hidden=config.catEmoteBubble===false;}
     widget.querySelector('.cat-mouse').hidden=config.catMouse===false;widget.querySelector('.cat-caption').hidden=config.catHints===false;
   };
   function ingest(frame){model.ingest(frame,config);}
   function animate(tick){if(ready&&!widget.hidden&&tick-lastPaint>=32){lastPaint=tick;const value=model.snapshot(config),pressed=new Set(value.pressed);
     for(const key of keys){const lit=pressed.has(key.dataset.catKey);if(lit!==key.classList.contains('is-down'))key.classList.toggle('is-down',lit);}
-    if(avatar)avatar.dataset.rally=String(value.rally);widget.classList.toggle('is-rally',value.rally);
+    const emote=value.emote||(preview&&Date.now()<demoEmoteUntil&&['nahida','vesna'].includes(config.catCharacter)&&config.catView!=='flat');if(avatar){avatar.dataset.rally=String(value.rally);avatar.dataset.emote=String(emote);}widget.classList.toggle('is-rally',value.rally);widget.classList.toggle('is-emote',emote);
     if(lastPose!==value.pose){if(avatar)avatar.dataset.pose=String(value.pose);lastPose=value.pose;}const busy=value.rate>=5;if(lastBusy!==busy){widget.classList.toggle('is-busy',busy);lastBusy=busy;}
     if(lastCombo!==value.combo){combo.textContent=value.combo;lastCombo=value.combo;}
     const text=value.rally?'集结部队！':config.catView==='flat'?(value.active?'按键响应中':'等待按键'):value.active?(value.rate>=5?'啪嗒啪嗒！':(config.catCharacter==='naiwa'?'哟嚯 · 敲击中':config.catCharacter==='nahida'?'叶间 · 哒哒':['vesna','nicole','artanis','custom'].includes(config.catCharacter)?'轻敲 · 哒哒':'喵 · 敲击中')):(config.catCharacter==='naiwa'?'呱 · 等待按键':['vesna','nahida','nicole','artanis','custom'].includes(config.catCharacter)?'等待按键':'喵 · 等待按键');if(lastRhythm!==text){rhythm.textContent=text;lastRhythm=text;}
@@ -35,7 +36,7 @@
     window.PreviewConnection.create({preview:isPreview,onState:next=>{saved=next;draw();}});
     if(isPreview){addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;
       if(event.data?.type==='catDraft'){draft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([key])=>key.startsWith('cat')));draw();}
-      if(event.data?.type==='catDemo')ingest({status:event.data.status||'active',pressed:Array.isArray(event.data.pressed)?event.data.pressed:[],sequence:'demo-'+(++demoSequence)});
+      if(event.data?.type==='catDemo'){demoEmoteUntil=event.data.expression===true?Date.now()+1200:0;ingest({status:event.data.status||'active',pressed:Array.isArray(event.data.pressed)?event.data.pressed:[],sequence:'demo-'+(++demoSequence)});}
     });}
   }
 })();

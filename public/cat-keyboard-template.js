@@ -8,6 +8,10 @@
     [['ShiftLeft',2.1],['Z'],['X'],['C'],['V'],['B'],['N'],['M'],['Comma'],['Period'],['Slash'],['ShiftRight',2.7]],
     [['CtrlLeft',1.25],['WinLeft',1.25],['AltLeft',1.25],['Space',5.3],['AltRight',1.25],['WinRight',1.25],['CtrlRight',1.25]]
   ];
+  const modifierKeys=['CtrlLeft','CtrlRight','ShiftLeft','ShiftRight','AltLeft','AltRight','WinLeft','WinRight'];
+  const validKeys=new Set([...rows.flat().map(([id])=>id),'Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2']);
+  function normalizeChord(value){if(typeof value!=='string')throw Error('触发按键格式不正确');if(!value.trim())return '';const keys=value.split('+').map(k=>k.trim());if(keys.length>6||new Set(keys).size!==keys.length||keys.some(k=>!validKeys.has(k)))throw Error('请选择有效的按键或组合键');return keys.sort((a,b)=>(modifierKeys.indexOf(a)<0?99:modifierKeys.indexOf(a))-(modifierKeys.indexOf(b)<0?99:modifierKeys.indexOf(b))||a.localeCompare(b)).join('+');}
+  function chordKeys(value){try{return normalizeChord(value||'').split('+').filter(Boolean);}catch{return [];}}
   const escape=value=>String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[ch]));
   const selected=(key,c)=>/^[A-Z]$/.test(key)?c.catLetters!==false:/^\d$/.test(key)?c.catNumbers!==false:/^F\d+$/.test(key)?c.catFunctions!==false:/^Mouse/.test(key)?c.catMouse!==false:/^(Ctrl|Shift|Alt|Win)/.test(key)?c.catModifiers!==false:c.catNavigation!==false;
   const key=(id,width=1)=>`<span class="cat-key" data-cat-key="${id}" style="--key-width:${width}">${escape(labels[id]||id)}</span>`;
@@ -43,18 +47,16 @@
     const touchboard=`<div class="cat-touchboard" aria-hidden="true">${[0,1,2].map(()=>'<div>'+Array(9).fill('<i></i>').join('')+'</div>').join('')}<div class="cat-touchboard-bottom"><i></i><i class="cat-touchboard-space"></i><i></i></div></div>`;
     return `<div class="cat-stage cat-split" data-keyboard-side="${side}"><div class="cat-character-view"><div class="cat-avatar" role="img" aria-label="猫娘面对自己的键盘拍键" data-pose="0"></div>${touchboard}</div><div class="cat-keyboard-view"><span class="cat-side-label">${side==='right'?'右半键盘':'左半键盘'}</span><div class="cat-board-angle"><div class="cat-board"><div class="cat-main-keys">${renderRows(halfRows[side])}</div>${side==='right'?navigation():''}</div>${mouse()}</div></div>${caption()}</div>`;
   }
-  function build(c={}){const character=['cat','vesna','naiwa','nahida','nicole','artanis','custom'].includes(c.catCharacter)?c.catCharacter:'cat',name={cat:'猫娘',vesna:'薇斯纳',naiwa:'奶蛙',nahida:'纳西妲',nicole:'尼可',artanis:'大主教',custom:'自定义角色'}[character],idle=character==='cat'?'喵 · 等待按键':character==='naiwa'?'呱 · 等待按键':'等待按键';return (buildBase(c)+(character==='artanis'&&c.catView!=='flat'?'<div class="cat-rally-callout" aria-hidden="true">集结部队</div>':'')).replace('class="cat-stage ','class="cat-stage cat-character-'+character+(c.catCurve!==false&&c.catView!=='flat'?' cat-curved':'')+' ').replaceAll('猫娘',name).replaceAll('喵 · 等待按键',idle);}
+  function build(c={}){const character=['cat','vesna','naiwa','nahida','nicole','artanis','custom'].includes(c.catCharacter)?c.catCharacter:'cat',name={cat:'猫娘',vesna:'薇斯纳',naiwa:'奶蛙',nahida:'纳西妲',nicole:'尼可',artanis:'大主教',custom:'自定义角色'}[character],idle=character==='cat'?'喵 · 等待按键':character==='naiwa'?'呱 · 等待按键':'等待按键';return (buildBase(c).replace(/<\/div>$/,(['nahida','vesna'].includes(character)&&c.catView!=='flat'?`<div class="cat-emote-callout" aria-hidden="true"${c.catEmoteBubble===false?' hidden':''}>${escape(c.catEmoteText??'♥')}</div>`:'')+'</div>')+(character==='artanis'&&c.catView!=='flat'?'<div class="cat-rally-callout" aria-hidden="true">集结部队</div>':'')).replace('class="cat-stage ','class="cat-stage cat-character-'+character+(c.catCurve!==false&&c.catView!=='flat'?' cat-curved':'')+' ').replaceAll('猫娘',name).replaceAll('喵 · 等待按键',idle);}
   function createModel({now=Date.now}={}){
-    let down=new Set(),glow=new Map(),taps=[],lastTap=-Infinity,lastSequence=-1,parity=0,status='waiting',rawDown=new Set(),rallyUntil=-Infinity,rallyBinding='',rallyHeld=false;
-    const validKeys=new Set([...rows.flat().map(([id])=>id),'Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2']);
-    function binding(c){return c.catCharacter==='artanis'&&validKeys.has(c.catRallyKey)?c.catRallyKey:'';}
-    function syncBinding(c){const next=binding(c);if(next!==rallyBinding){rallyBinding=next;rallyUntil=-Infinity;rallyHeld=false;}}
+    let down=new Set(),glow=new Map(),taps=[],lastTap=-Infinity,lastSequence=-1,parity=0,status='waiting',rawDown=new Set(),rallyUntil=-Infinity,rallyBinding='',rallyHeld=false,rallyKeys=[],rallyKind='',rallyHold=1000;
+    function syncBinding(c){const kind=c.catCharacter==='artanis'?'rally':['nahida','vesna'].includes(c.catCharacter)?'emote':'';const keys=chordKeys(kind==='rally'?c.catRallyKey:kind==='emote'?c.catEmoteKey:'');const next=kind+':'+c.catCharacter+':'+keys.join('+');rallyHold=(kind==='rally'?c.catRallyHold:c.catEmoteHold)??1000;if(next!==rallyBinding){rallyBinding=next;rallyKeys=keys;rallyKind=kind;rallyUntil=-Infinity;rallyHeld=false;}}
     function ingest(frame,c={}){
       syncBinding(c);if(!frame||frame.sequence===lastSequence)return;lastSequence=frame.sequence;status=frame.status;
       if(status!=='active'){down.clear();glow.clear();taps=[];lastTap=-Infinity;rawDown.clear();rallyUntil=-Infinity;rallyHeld=false;return;}
       const at=now(),raw=new Set((frame.pressed||[]).filter(k=>validKeys.has(k)));
-      if(rallyBinding&&raw.has(rallyBinding)&&!rawDown.has(rallyBinding)){rallyUntil=at+(c.catRallyHold??1000);rallyHeld=true;}
-      if(rallyHeld&&!raw.has(rallyBinding)){rallyUntil=Math.max(rallyUntil,at+(c.catRallyHold??1000));rallyHeld=false;}rawDown=raw;
+      const held=rallyKeys.length>0&&rallyKeys.every(k=>raw.has(k)),wasHeld=rallyKeys.length>0&&rallyKeys.every(k=>rawDown.has(k));if(held&&!wasHeld){rallyUntil=at+rallyHold;rallyHeld=true;}
+      if(rallyHeld&&!held){rallyUntil=Math.max(rallyUntil,at+rallyHold);rallyHeld=false;}rawDown=raw;
       const current=new Set((frame.pressed||[]).filter(k=>selected(k,c)&&(rows.some(row=>row.some(([id])=>id===k))||['Insert','Home','PageUp','Delete','End','PageDown','Up','Down','Left','Right','Mouse1','Mouse2'].includes(k))));
       const fresh=[...current].filter(k=>!down.has(k));
       taps=taps.filter(t=>at-t<1000);
@@ -66,9 +68,10 @@
       const rate=taps.length,age=at-lastTap,active=age<Math.max(160,Math.min(420,1000/Math.max(1,rate)));
       const pose=active?(rate>3?1+(Math.floor(age/Math.max(65,180-rate*8))%2):(parity?1:2)):0;
       const pressed=[...glow.keys()].filter(k=>selected(k,c));const current=[...down].filter(k=>selected(k,c));const raw=current.length?current:pressed;const combo=[...new Set(raw.map(k=>labels[k]||k))].slice(0,6).join(' + ');
-      return{rally:!!rallyBinding&&c.catView!=='flat'&&status==='active'&&(rallyHeld||at<rallyUntil),pressed,pose,rate,status,combo:combo||'准备好啦',active};
+      const expression=rallyKeys.length>0&&c.catView!=='flat'&&status==='active'&&(rallyHeld||at<rallyUntil);
+      return{emote:rallyKind==='emote'&&expression,rally:rallyKind==='rally'&&!!rallyKeys.length&&c.catView!=='flat'&&status==='active'&&(rallyHeld||at<rallyUntil),pressed,pose,rate,status,combo:combo||'准备好啦',active};
     }
     return{ingest,snapshot};
   }
-  return{build,createModel,rows,halfRows,labels};
+  return{build,createModel,rows,halfRows,labels,normalizeChord,chordKeys};
 });
