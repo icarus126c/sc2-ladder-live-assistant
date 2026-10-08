@@ -82,7 +82,7 @@ test('all builtin scene themes produce valid opacity fields and can be saved in 
   const get = id => nodes.get(id) || node(id);
   const buttons = model.phases.map(phase => Object.assign(node(), {dataset: {editScene: phase}}));
   const store = createReplayStore();
-  const win = {SceneCustomization: model, SceneThemes: themes, AssistantActions: {toast() {}, async act(action, {config}) {
+  const win = {SceneCustomization: model, ResourceTemplate: require('../public/resource-template.js'), SceneThemes: themes, AssistantActions: {toast() {}, async act(action, {config}) {
     assert.equal(action, 'ladderConfigure'); store.configure(config); return {scene: 'game', ladder: store.snapshot()};
   }}};
   vm.runInNewContext(fs.readFileSync(require.resolve('../public/scene-editor.js'), 'utf8'), {

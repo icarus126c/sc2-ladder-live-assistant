@@ -2,8 +2,9 @@ const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypt
 const {defaults:appearance,sanitize:style,dayKey}=require('./ladder.cjs');
 const {sceneDefaults,sanitizeScenes}=require('./scene-settings.cjs');
 const daily=require('./daily-stats.cjs');
+const resources=require('./public/resource-template.js');
 const storage=require('./data-storage.cjs');
-const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
+const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
   scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
   waitingLayout:'center',waitingImageFit:'cover',waitingDim:35,waitingPanelOpacity:35,waitingWidth:1320,waitingTitleSize:66,waitingKicker:'TEAM AENEAS / LADDER SESSION',
@@ -16,7 +17,7 @@ const defaults={...appearance,...sceneDefaults,...daily.defaults,enabled:true,in
 const validMMR=n=>Number.isInteger(n)&&n>0&&n<=20000;
 const race=r=>({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R',Terr:'T',Prot:'P'})[r]||r;
 function sanitize(input,base=defaults){
-  const c=daily.sanitize(input,sanitizeScenes(input,style(input,base)));
+  const c=resources.sanitize(input,daily.sanitize(input,sanitizeScenes(input,style(input,base))));
   for(const key of ['replayDirectory','toonHandle'])if(key in input){if(typeof input[key]!=='string'||input[key].length>1024||input[key].includes('\0'))throw Error('目录或账号格式不正确');c[key]=input[key].trim();}
   if(c.toonHandle&&!/^\d+-S2-\d+-\d+$/.test(c.toonHandle))throw Error('账号请填写完整格式，例如 5-S2-1-9469666');
   if('mmrMode'in input){if(!['replay','estimate','manual'].includes(input.mmrMode))throw Error('MMR模式不正确');c.mmrMode=input.mmrMode;}
@@ -25,7 +26,7 @@ function sanitize(input,base=defaults){
   if('scoreboardTemplate'in input){if(!['compact','bluegold','dual'].includes(input.scoreboardTemplate))throw Error('计分器模板不正确');c.scoreboardTemplate=input.scoreboardTemplate;}
   for(const [key,min,max]of [['scoreboardX',0,1900],['scoreboardY',0,1060],['scoreboardWidth',320,1000],['scoreboardScale',50,150],['scoreboardOpacity',0,100],['scoreboardPanelOpacity',0,100]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('计分器位置或大小超出范围');c[key]=input[key];}
   for(const key of ['gameFrameEnabled','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations'])if(key in input){if(typeof input[key]!=='boolean')throw Error('游戏边框开关格式不正确');c[key]=input[key];}
-  if('gameFrameStyle'in input){if(!['slim','corners','nailong','anes','naiwa','nahida','vesna','nicole','custom'].includes(input.gameFrameStyle))throw Error('游戏边框样式不正确');c.gameFrameStyle=input.gameFrameStyle;}
+  if('gameFrameStyle'in input){if(!['slim','corners','nailong','anes','naiwa','nahida','vesna','nicole','artanis','zealot','custom'].includes(input.gameFrameStyle))throw Error('游戏边框样式不正确');c.gameFrameStyle=input.gameFrameStyle;}
   for(const key of ['gameFrameImage','catFrontImage','catRearImage'])if(key in input){if(typeof input[key]!=='string'||(input[key]!==''&&!/^\/style-assets\/[a-f\d]{64}\.png$/.test(input[key])))throw Error('请选择已安装风格中的素材');c[key]=input[key];}
   if('gameFrameAccent'in input){if(typeof input.gameFrameAccent!=='string'||!/^#[a-f\d]{6}$/i.test(input.gameFrameAccent))throw Error('游戏边框颜色不正确');c.gameFrameAccent=input.gameFrameAccent;}
   for(const [key,min,max]of [['gameFrameThickness',1,6],['gameFrameOpacity',20,100],['gameFrameScale',70,115],['gameFrameX',-120,120],['gameFrameY',-80,60]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw Error('游戏边框外观数值超出范围');c[key]=input[key];}

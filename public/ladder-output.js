@@ -18,7 +18,7 @@
     const dailyPreview=preview&&params.get('module')==='daily';if(dailyPreview){state.scene=dailyPhase;state.ladder.config.dailyEnabled=true;state.ladder.config.enabled=true;state.ladder.config.catEnabled=false;}
     if(preview&&params.get('module')==='editor')window.SceneEditorPreviewState=state;
     window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
-    window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,outfit?{preview:true}:{});
+    window.ResourceOverlay?.render(state);window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,outfit?{preview:true}:{});
     if(outfit)document.getElementById('catWidget').hidden=state.scene!=='game'||!state.ladder.config.catEnabled;
     if(preview&&params.get('module')==='overlay'){document.getElementById('scoreboardWidget').hidden=true;document.getElementById('ladderWaiting').hidden=true;}
     if(!preview||!params.get('module')||['scene','editor'].includes(params.get('module')))window.LiveInteractionOverlay?.render(state);
@@ -26,7 +26,8 @@
     if(dailyPreview){for(const id of ['ladderHUD','scoreboardWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;}
     else if(preview&&params.get('module')&&!['waiting','loading','break','scene','editor'].includes(params.get('module')))document.getElementById('dailyWidget').hidden=true;
     document.getElementById('breakScreen').hidden=true;
-    if(state.scene==='blank')for(const id of ['ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
+    if(preview&&params.get('module')&&!['outfit','scene','editor'].includes(params.get('module')))document.getElementById('resourceWidget').hidden=true;
+    if(state.scene==='blank')for(const id of ['resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
   }
   if(preview&&['waiting','loading','break'].includes(params.get('module')))addEventListener('message',event=>{
     if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='waitingDraft')return;
