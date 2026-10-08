@@ -120,7 +120,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
             check('MMR',c.mmr!==null,ladder.snapshot().mmrMessage);
             diagnostics={at:now(),checks};break;
           }
-          case'identityDetect':return json(200,await discoverAccounts(ladder.getConfig(),accountOptions));
+          case'identityDetect':return json(200,await discoverAccounts(ladder.getConfig(),{...accountOptions,includeNames:true,parser:accountOptions.parser||parser}));
           case'identityInspect':return json(200,await inspectAccount(ladder.getConfig(),i.replayDirectory,{...accountOptions,parser:accountOptions.parser||parser}));
           case'liveConnect':interactions.configure({roomId:i.roomId,mode:i.mode});await bili.connect({roomId:i.roomId,mode:i.mode,credentials:i.credentials});break;
           case'liveDisconnect':await bili.disconnect();break;

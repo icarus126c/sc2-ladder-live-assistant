@@ -12,13 +12,14 @@
     $('identitySave').textContent='保存身份与录像目录';
   }
   async function detect(switching=false){
-    if(busy)return;pendingDirectory='';pendingHandle='';$('identitySave').textContent='保存身份';setBusy(true);message.textContent='正在查找星际2账号和录像目录…';
+    if(busy)return;pendingDirectory='';pendingHandle='';$('identitySave').textContent='保存身份';setBusy(true);message.textContent='正在查找星际2账号，并从最近录像读取昵称…';
     try{
       const value=await api().act('identityDetect');candidates=value.candidates;select.replaceChildren();
       const empty=document.createElement('option');empty.value='';empty.textContent='请选择你使用的账号';select.append(empty);
       for(const [index,c]of candidates.entries()){
         const option=document.createElement('option');option.value=String(index);
-        option.textContent=region(c.toonHandle)+' · '+c.toonHandle+(c.lastReplayAt?' · 最近录像 '+new Date(c.lastReplayAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):' · 尚无录像');select.append(option);
+        const nickname=c.names?.at(-1)||'昵称未读取';
+        option.textContent=nickname+' · '+region(c.toonHandle)+' · '+c.toonHandle+(c.lastReplayAt?' · 最近录像 '+new Date(c.lastReplayAt).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):' · 尚无录像');select.append(option);
       }
       $('detectedAccountsBox').hidden=!candidates.length;message.textContent=value.message;
       const current=$('toonHandle').value.trim(),matching=candidates.filter(c=>c.toonHandle===current),chosen=candidates.length===1?candidates[0]:!switching&&matching.length===1?matching[0]:null;
