@@ -18,6 +18,6 @@
     const resize=(c=saved?.ladder.config||{})=>{const factor=(c.scoreboardScale||100)/100;$('canvas').style.transform=`scale(${Math.min(innerWidth/(detail?(c.scoreboardWidth||560)*factor+80:1920),innerHeight/(detail?160*factor+60:1080))})`;};resize();addEventListener('resize',()=>resize({...saved?.ladder.config,...draft}));
     function draw(){if(!saved)return;const c={...saved.ladder.config,...draft};if(detail)Object.assign(c,{scoreboardX:40,scoreboardY:30});resize(c);render({...saved,ladder:{...saved.ladder,config:c}},{standalone:true,preview});}
     if(preview)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='scoreboardDraft')return;draft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([key])=>key.startsWith('scoreboard')));draw();});
-    const events=new EventSource('/api/events?role='+(preview?'preview':'output'));events.onmessage=e=>{saved=JSON.parse(e.data);draw();};
+    window.PreviewConnection.create({preview:preview,onState:next=>{saved=next;draw();}});
   }
 })();

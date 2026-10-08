@@ -30,7 +30,7 @@ test('background uploads require local authorization, reject unsupported files a
 test('waiting drafts are preview-only and never replace saved output state',()=>{
   function harness(search){let events;const listeners={},renders=[],nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{style:{},hidden:false});return nodes.get(id);},parent={};
     const context={location:{search,origin:'http://127.0.0.1:17864'},parent,URLSearchParams,innerWidth:1920,innerHeight:1080,document:{body:{classList:{add(){}}},getElementById:node},addEventListener:(key,fn)=>listeners[key]=fn,window:{LadderOverlay:{render:s=>renders.push(s)},ScoreboardOverlay:{render(){}}},EventSource:class{constructor(){events=this;}}};
-    vm.runInNewContext(fs.readFileSync(require.resolve('../public/ladder-output.js'),'utf8'),context);return{listeners,renders,parent,events};
+    vm.runInNewContext(require('./preview-fixture.cjs')+fs.readFileSync(require.resolve('../public/ladder-output.js'),'utf8'),context);return{listeners,renders,parent,events};
   }
   const state={scene:'game',ladder:createReplayStore().snapshot()},preview=harness('?preview=1&phase=intermission&module=waiting');preview.events.onmessage({data:JSON.stringify(state)});preview.listeners.message({origin:'http://127.0.0.1:17864',source:preview.parent,data:{type:'waitingDraft',config:{waitingTitle:'草稿标题',mmr:9999}}});assert.equal(preview.renders.at(-1).ladder.config.waitingTitle,'草稿标题');assert.equal(preview.renders.at(-1).ladder.config.mmr,null);assert.equal(state.scene,'game');
   preview.listeners.message({origin:'https://example.com',source:preview.parent,data:{type:'waitingDraft',config:{waitingTitle:'非法'}}});assert.equal(preview.renders.at(-1).ladder.config.waitingTitle,'草稿标题');

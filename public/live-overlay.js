@@ -20,6 +20,6 @@
   if(preview)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;if(event.data?.type==='liveDraft'){configDraft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([k,v])=>fields.has(k)&&(typeof v==='boolean'||typeof v==='number'&&Number.isFinite(v)||k==='accent'&&/^#[a-f\d]{6}$/i.test(v))));if(saved)render(saved,{configDraft});}
    if(event.data?.type==='liveDemo'&&saved){const t=Date.now()+offset;if(event.data.kind==='gift'){queue.push({id:'demo-'+Date.now(),userName:'示例观众',gift:'小电视飞船',quantity:1,type:'gift',paid:true,demo:true});active=null;}else if(event.data.kind==='raffle'){demoRaffle={title:'示例奖品 · 星际头像',keyword:'冲分加油',winnerCount:1,count:8,status:'drawn',drawnAt:t,deadline:t,winners:[{name:'示例中奖观众'}]};demoUntil=t+10000;}draw();}
   });
-  const events=new EventSource('/api/events?role='+(preview?'preview':'output'));events.onmessage=e=>render(JSON.parse(e.data),{configDraft});
+  window.PreviewConnection.create({preview,onState:next=>render(next,{configDraft})});
  }
 })();

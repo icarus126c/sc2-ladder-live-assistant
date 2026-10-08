@@ -6,7 +6,7 @@
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
   views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增大主教与狂热者星灵控制台，信息保护镂空保留小地图、单位与技能；可预览调整装甲边沿。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'游戏小工具',description:'只替换矿物、瓦斯与人口图标，原版数字保持透明。预览调整后再应用。'};
-  views.catkeyboard={name:'按键小助手',title:'按键小助手',eyebrow:'直播互动',description:'切换猫娘、纳西妲、薇斯纳和奶蛙，左右半键盘与自然弧度均可设置。'};
+  views.catkeyboard={name:'按键小助手',title:'按键小助手',eyebrow:'直播互动',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
   views.liveinteraction={name:'直播间互动',title:'让直播间一起参与。',eyebrow:'B站联动',description:'接收礼物、计算收益，使用弹幕口令邀请观众参与抽奖。'};
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
@@ -15,6 +15,7 @@
   const frameFields=['gameFrameCoverage','gameFrameStyle','gameFrameAccent','gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameMinimap','gameFrameSelection','gameFramePortrait','gameFrameCommands','gameFrameDecorations','gameFrameDecorationScale','gameFrameMemeText'];
   const frameNumbers=new Set(['gameFrameThickness','gameFrameOpacity','gameFrameScale','gameFrameX','gameFrameY','gameFrameDecorationScale']);
   const scoreFields=['scoreboardAccent','scoreboardTemplate','scoreboardX','scoreboardY','scoreboardWidth','scoreboardScale','scoreboardOpacity','scoreboardPanelOpacity','scoreboardDetails'];
+  const previewHost=window.PreviewConnection.attachHost({getState:()=>state});
   let state,connected=false,scoreboardDirty=false,frameDirty=false,mainTextDirty=false;
   const mainSwitches={mainFrameEnabled:'gameFrameEnabled',mainScoreEnabled:'scoreboardEnabled',mainDailyEnabled:'dailyEnabled',mainHUDEnabled:'showHUD'},mainTextFields={mainWaitingTitle:'waitingTitle',mainWaitingNote:'waitingNote',mainBreakTitle:'breakTitle',mainBreakNote:'breakNote',mainWaitingShowText:'waitingShowText',mainBreakShowText:'breakShowText'};
   function route(){const key=location.hash.slice(1);const view=Object.hasOwn(views,key)?key:'console',meta=views[view];
@@ -41,7 +42,7 @@
   const configure=config=>window.AssistantActions.act('ladderConfigure',{config});
   function connection(value){connected=value;window.ResourceWorkspace?.connection(value);window.SceneEditor?.connection(value);window.DailyWorkspace?.connection(value);window.LiveWorkspace?.connection(value);window.OutfitWorkspace?.connection(value);window.CatWorkspace?.connection(value);for(const id of ['homeScoreboard','homeHUD','scoreboardEnabled','homeGameFrame','gameFrameEnabled','gameFrameApply','scoreboardApply',...Object.keys(mainSwitches),'mainFrameStyle','mainKeyboardSide','mainKeyboardView','mainTextSave','mainTextDiscard'])$(id).disabled=!value||!state;for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!value||!state;for(const id of Object.keys(mainTextFields))$(id).disabled=!value||!state;for(const key of scoreFields)$(key).disabled=!state;$('scoreboardAccentCustom').disabled=!state;for(const b of document.querySelectorAll('[data-score-template],[data-score-position],[data-score-size],[data-frame-quick]'))b.disabled=!state;$('mainKeyboardSide').disabled=!value||!state||state.ladder.config.catView==='classic';window.SceneWorkspace?.connection(value);}
   function obsStatus(ready){$('homeOBSStatus').textContent=ready?'OBS已连接':'OBS未连接';$('homeOBSDot').classList.toggle('connected',ready);}
-  function render(next){state=next;window.ResourceWorkspace?.render(next);window.SceneEditor?.render(next);window.DailyWorkspace?.render(next);window.LiveWorkspace?.render(next);window.OutfitWorkspace?.render(next);window.CatWorkspace?.render(next);const c=next.ladder.config,s=next.ladder.stats,live=next.ladder.session?.stats||s;
+  function render(next){state=next;previewHost.publish(next);window.ResourceWorkspace?.render(next);window.SceneEditor?.render(next);window.DailyWorkspace?.render(next);window.LiveWorkspace?.render(next);window.OutfitWorkspace?.render(next);window.CatWorkspace?.render(next);const c=next.ladder.config,s=next.ladder.stats,live=next.ladder.session?.stats||s;
     for(const [id,key]of Object.entries(mainSwitches))$(id).checked=c[key]===true;
     $('mainFrameStyle').value=c.gameFrameStyle;$('mainKeyboardSide').value=c.catKeyboardSide;$('mainKeyboardView').value=c.catView;$('mainKeyboardSide').disabled=!connected||c.catView==='classic';
     $('mainFrameStyle').querySelector('option[value=custom]').disabled=!c.gameFrameImage;

@@ -32,7 +32,7 @@
     function resize(){const scale=Math.min(innerWidth/(detail?680:1920),innerHeight/(detail?450:1080)),canvas=document.getElementById('canvas');canvas.style.transform=`scale(${scale})`;canvas.style.top='0';}
     const draw=()=>{if(!saved)return;const c={...saved.ladder.config,...draft};if(detail)Object.assign(c,{catX:55,catY:28,catWidth:570});render({...saved,ladder:{...saved.ladder,config:c}},{standalone:true,preview:isPreview});};
     resize();addEventListener('resize',resize);
-    const events=new EventSource('/api/events?role='+(isPreview?'preview':'output'));events.onmessage=e=>{saved=JSON.parse(e.data);draw();};
+    window.PreviewConnection.create({preview:isPreview,onState:next=>{saved=next;draw();}});
     if(isPreview){addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent)return;
       if(event.data?.type==='catDraft'){draft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([key])=>key.startsWith('cat')));draw();}
       if(event.data?.type==='catDemo')ingest({status:event.data.status||'active',pressed:Array.isArray(event.data.pressed)?event.data.pressed:[],sequence:'demo-'+(++demoSequence)});

@@ -13,6 +13,6 @@
     resize();addEventListener('resize',resize);
     const draw=()=>{if(state)render({...state,ladder:{...state.ladder,config:{...state.ladder.config,...draft}}},{standalone:true,preview});};
     if(preview)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='gameFrameDraft')return;draft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([key])=>key.startsWith('gameFrame')));draw();});
-    const events=new EventSource('/api/events?role='+(preview?'preview':'output'));events.onmessage=e=>{state=JSON.parse(e.data);draw();};
+    window.PreviewConnection.create({preview:preview,onState:next=>{state=next;draw();}});
   }
 })();

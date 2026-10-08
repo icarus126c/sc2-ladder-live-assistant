@@ -18,7 +18,7 @@
     const dailyPreview=preview&&params.get('module')==='daily';if(dailyPreview){state.scene=dailyPhase;state.ladder.config.dailyEnabled=true;state.ladder.config.enabled=true;state.ladder.config.catEnabled=false;}
     if(preview&&params.get('module')==='editor')window.SceneEditorPreviewState=state;
     window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
-    window.ResourceOverlay?.render(state);window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,outfit?{preview:true}:{});
+    window.ResourceOverlay?.render(state);window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,preview&&!livePreview?{preview:true}:{});
     if(outfit)document.getElementById('catWidget').hidden=state.scene!=='game'||!state.ladder.config.catEnabled;
     if(preview&&params.get('module')==='overlay'){document.getElementById('scoreboardWidget').hidden=true;document.getElementById('ladderWaiting').hidden=true;}
     if(!preview||!params.get('module')||['scene','editor'].includes(params.get('module')))window.LiveInteractionOverlay?.render(state);
@@ -51,7 +51,6 @@
     if(!['game','intermission','loading','break','blank','custom'].includes(event.data.phase))return;
     scenePreviewPhase=event.data.phase;render();
   });
-  const events=new EventSource('/api/events?role='+(preview?'preview':'output'));
-  events.onmessage=e=>{saved=JSON.parse(e.data);window.OutfitPresets?.registerInstalled(saved.stylePacks||[],saved.outfit?.combinations||[]);render();};
+  window.PreviewConnection.create({preview,onState:state=>{saved=state;window.OutfitPresets?.registerInstalled(saved.stylePacks||[],saved.outfit?.combinations||[]);render();}});
 })();
 
