@@ -130,7 +130,15 @@ function createReplayStore(file=null,now=Date.now){
     if(isAI&&!config.includeAI){status='已跳过：人机对局不计入真人1v1战绩；可开启“计入人机对局”';return{kind:'skipped',message:status};}
     if(p.players?.length!==2||p.selfPlayers?.length!==1||p.opponents?.length!==1||me?.human!==true||(isAI?op?.human!==false:op?.human!==true)||p.players.some(x=>x.human!==true&&x.human!==false)||!['W','L'].includes(p.selfResult)||!Number.isFinite(p.at)||p.at<=0||p.at>now()+60000){status='已跳过：旁观、身份不明、非1v1或胜负/时间无效';return{kind:'skipped',message:status};}
     const matchKey=crypto.createHash('sha256').update(JSON.stringify([p.at,p.durationSeconds,p.map,p.players.map(x=>x.toonHandle).sort()])).digest('hex'),key=identity()+':'+matchKey,hashKey=identity()+':'+hash;
-    if(seen[key]||seen[hashKey]){const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,metricsOpponent):false;if(previous&&(!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}if(changed)persist();return{kind:'duplicate',message:'已处理过这盘录像，统计已核对'};}
+    if(seen[key]||seen[hashKey]){
+      const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,metricsOpponent):false;
+      if(previous){
+        // Re-reading a replay repairs old Random race labels without adding a result.
+        for(const [field,value]of [['opponentRace',race(op.race)],['race',race(me.race)]])if(['T','P','Z'].includes(value)&&previous[field]!==value){previous[field]=value;changed=true;}
+        if((!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}
+      }
+      if(changed)persist();return{kind:'duplicate',message:'已处理过这盘录像，统计已核对'};
+    }
     const result=p.selfResult==='W'?'win':'loss';
     const replayStart=Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.at-p.durationSeconds*1000:null;
     const candidates=records.filter(r=>r.identity===identity()&&r.source==='manual'&&!r.replayKey&&((Math.abs(r.at-p.at)<=120000&&(replayStart===null||r.at>=replayStart-15000))||(Number.isFinite(r.startedAt)&&replayStart!==null&&Math.abs(r.startedAt-replayStart)<=15000))&&(r.opponent==='手动记录'||r.opponent===op.name));

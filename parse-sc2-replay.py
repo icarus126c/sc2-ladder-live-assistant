@@ -65,8 +65,19 @@ def normalize_race(value):
         "Zerg": "Zerg",
         "Terr": "Terran",
         "Rand": "Random",
+        "随机": "Random",
     }
     return mapping.get(text, text)
+
+
+def player_races(player, meta):
+    selected = normalize_race(meta.get("SelectedRace") or player.get("m_race") or "")
+    assigned = normalize_race(meta.get("AssignedRace") or "")
+    detailed = normalize_race(player.get("m_race") or "")
+    # SelectedRace is the lobby choice. Random must count against the race played.
+    actual = next((race for race in (assigned, detailed, selected)
+                   if race in ("Terran", "Protoss", "Zerg")), selected)
+    return selected, actual
 
 
 def load_protocol(archive):
@@ -96,7 +107,7 @@ def parse_replay(replay_path, config):
         meta = meta_players[index - 1] if index - 1 < len(meta_players) else {}
         toon = player.get("m_toon") or {}
         result = meta.get("Result") or RESULTS.get(player.get("m_result"), "Unknown")
-        selected_race = meta.get("SelectedRace") or player.get("m_race")
+        selected_race, actual_race = player_races(player, meta)
         players.append(
             {
                 "slot": index,
@@ -107,7 +118,8 @@ def parse_replay(replay_path, config):
                 "realm": toon.get("m_realm"),
                 "teamId": player.get("m_teamId"),
                 "result": result,
-                "race": normalize_race(selected_race),
+                "race": actual_race,
+                "selectedRace": selected_race,
                 "mmr": meta.get("MMR"),
                 "apm": meta.get("APM"),
                 "human": player.get("m_control") == 2,

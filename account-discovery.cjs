@@ -65,7 +65,7 @@ async function readIdentity(candidate,files,parser){
       if(own?.length===1){const p=own[0],name=typeof p.name==='string'?p.name.trim():'';
         if(!name||name.length>60)continue;
         const plain=name.replace(/^<[^>]+>\s*/, '');
-        const identity={names:[...new Set([name,plain])].filter(Boolean),race:({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R'})[p.race]||null,message:'已从本机账号目录读取 ID，并从该账号参与的录像读取昵称。点击“保存身份与录像目录”生效。'};
+        const identity={names:[...new Set([name,plain])].filter(Boolean),race:({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R'})[p.selectedRace||p.race]||null,message:'已从本机账号目录读取 ID，并从该账号参与的录像读取昵称。点击“保存身份与录像目录”生效。'};
         cache.set(stamp,identity);if(cache.size>200)cache.delete(cache.keys().next().value);return {...candidate,...identity};
       }
     }catch{}
