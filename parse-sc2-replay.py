@@ -38,6 +38,7 @@ from s2protocol.versions import build, latest
 from s2protocol.s2_cli import read_contents
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from replay_daily import analyze_tracker
+from replay_tracker_compat import guarded_tracker
 
 
 RESULTS = {
@@ -95,13 +96,16 @@ def load_tracker_protocol(base_build):
     try:
         return build(base_build), None
     except Exception:
-        # Only verified VersionedDecoder tracker streams may use a nearby schema.
+        # Newer VersionedDecoder tracker streams must pass runtime validation.
         # Never use these aliases for bit-packed init data or game events.
         if base_build == 97579:
             return build(95299), "compatible-97579"
         if base_build in (98310, 98370):
             import replay_protocol98310
             return replay_protocol98310, None if base_build == 98310 else "compatible-98370-via-98310"
+        if type(base_build) is int and base_build > 98310:
+            import replay_protocol98310
+            return replay_protocol98310, f"guarded-{base_build}-via-98310"
         raise ValueError(f"暂不支持版本 {base_build} 的单位跟踪统计")
 
 
@@ -165,16 +169,24 @@ def parse_replay(replay_path, config):
 
     daily_metrics = {"version": 1, "zerglings": None, "zealots": None, "workersKilled": None, "status": "unavailable", "note": "尚未确认本机玩家"}
     if not config.get("metadataOnly") and len(self_players) == 1 and len(opponents) == 1 and len(players) == 2:
+        compatible = None
         try:
             tracker_protocol, compatible = load_tracker_protocol(base_build)
             own_id = self_players[0].get("trackerPlayerId")
             enemy_id = opponents[0].get("trackerPlayerId")
             expected = {p["trackerPlayerId"]: p["slot"] - 1 for p in players if isinstance(p.get("trackerPlayerId"), int)}
-            daily_metrics = analyze_tracker(tracker_protocol.decode_replay_tracker_events(read_contents(archive, "replay.tracker.events")), own_id, {enemy_id}, expected)
+            contents = read_contents(archive, "replay.tracker.events")
+            events = tracker_protocol.decode_replay_tracker_events(contents)
+            if compatible and compatible.startswith("guarded-"):
+                header = latest().decode_replay_header(archive.header["user_data_header"]["content"])
+                races = {p["trackerPlayerId"]: p["race"] for p in players}
+                events = guarded_tracker(events, expected, races, header.get("m_elapsedGameLoops"), len(contents))
+            daily_metrics = analyze_tracker(events, own_id, {enemy_id}, expected)
             if compatible:
                 daily_metrics["decoder"] = compatible
         except Exception as error:
-            daily_metrics["note"] = str(error)[:180]
+            prefix = f"版本 {base_build} 兼容校验未通过，请更新解析器：" if compatible and compatible.startswith("guarded-") else ""
+            daily_metrics["note"] = (prefix + str(error))[:180]
 
     map_name = metadata.get("Title") or clean_text(details.get("m_title") or os.path.basename(replay_path))
     duration = metadata.get("Duration")

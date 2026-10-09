@@ -10,7 +10,7 @@ class TrackerVersionTests(unittest.TestCase):
         exact=object()
         with patch.object(parser,'build',return_value=exact):self.assertEqual(parser.load_tracker_protocol(98370),(exact,None))
 
-    def test_verified_aliases_and_unknown_versions_fail_closed(self):
+    def test_verified_aliases_and_newer_version_candidates(self):
         old=object()
         def build(number):
             if number==95299:return old
@@ -19,7 +19,8 @@ class TrackerVersionTests(unittest.TestCase):
             self.assertEqual(parser.load_tracker_protocol(97579),(old,'compatible-97579'))
             self.assertEqual(parser.load_tracker_protocol(98310),(replay_protocol98310,None))
             self.assertEqual(parser.load_tracker_protocol(98370),(replay_protocol98310,'compatible-98370-via-98310'))
-            with self.assertRaisesRegex(ValueError,'暂不支持版本 99999'):parser.load_tracker_protocol(99999)
+            self.assertEqual(parser.load_tracker_protocol(99999),(replay_protocol98310,'guarded-99999-via-98310'))
+            with self.assertRaisesRegex(ValueError,'暂不支持版本 90000'):parser.load_tracker_protocol(90000)
 
     def test_vendored_schema_is_unmodified_official_source(self):
         with open(os.path.join(root,'replay_protocol98310.py'),'rb') as f:self.assertEqual(hashlib.sha256(f.read()).hexdigest(),'2941e39e970c21bfa7bb9c5c6d340c09366a5743f223b516fe19443f67c578e5')
