@@ -10,9 +10,9 @@ function parseReplay(file,config){return new Promise((resolve,reject)=>{
   child.on('close',code=>{try{const p=JSON.parse(out);if(code||!p.ok)finish(Error(p.error||err||'解析失败'));else finish(null,p);}catch{finish(Error('录像解析器未返回有效数据：'+err));}});
 });}
 function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.now,intervalMs=4000}){
-  let busy=false,closed=false,force=null,epoch=0,watch=null,lastRoot='',cache=new Map(),status={busy:false,message:'尚未扫描',lastScanAt:null,scanned:0,recorded:0,skipped:0,duplicates:0,errors:[],recent:[]};
+  let busy=false,closed=false,force=null,epoch=0,watch=null,lastRoot='',cache=new Map(),metricRetries=new Map(),status={busy:false,message:'尚未扫描',lastScanAt:null,scanned:0,recorded:0,skipped:0,duplicates:0,errors:[],recent:[]};
   function files(root){const result=[];let visited=0;function walk(dir,depth){if(depth>12||visited++>2000)return;for(const e of fs.readdirSync(dir,{withFileTypes:true})){if(result.length>=20000)return;const full=path.join(dir,e.name);if(e.isSymbolicLink())continue;if(e.isDirectory())walk(full,depth+1);else if(e.isFile()&&/\.SC2Replay$/i.test(e.name)){const s=fs.statSync(full);if(s.size>0&&s.size<100000000)result.push({file:full,size:s.size,mtime:s.mtimeMs});}}}walk(root,0);return result;}
-  function configure(){epoch++;cache.clear();watch?.close();watch=null;lastRoot=store.getConfig().replayDirectory;if(lastRoot&&fs.existsSync(lastRoot)){try{watch=fs.watch(lastRoot,{recursive:true},()=>{force=force||'auto';});watch.on('error',()=>{});}catch{}}}
+  function configure(){epoch++;cache.clear();metricRetries.clear();watch?.close();watch=null;lastRoot=store.getConfig().replayDirectory;if(lastRoot&&fs.existsSync(lastRoot)){try{watch=fs.watch(lastRoot,{recursive:true},()=>{force=force||'auto';});watch.on('error',()=>{});}catch{}}}
   async function scan(mode='today'){
     if(!['auto','today','recent'].includes(mode))throw Error('扫描模式无效');
     if(busy){force=mode;return snapshot();}if(closed)return snapshot();
@@ -29,14 +29,18 @@ function createReplayWatcher({store,onUpdate=()=>{},parser=parseReplay,now=Date.
       // Auto scans also cover the running stream across midnight; the store assigns each accounting date.
       list.sort((a,b)=>a.mtime-b.mtime);
       for(const f of list){if(closed||generation!==epoch)break;
-        const stamp=[f.size,f.mtime,c.toonHandle,c.names.join('|'),c.includeAI===true].join(':');if(mode==='auto'&&cache.get(f.file)===stamp)continue;
+        const stamp=[f.size,f.mtime,c.toonHandle,c.names.join('|'),c.includeAI===true].join(':');const retry=metricRetries.get(f.file);if(mode==='auto'&&cache.get(f.file)===stamp&&(!retry||retry.nextAt>now()))continue;
         try{
           const content=await fs.promises.readFile(f.file),hash=crypto.createHash('sha256').update(content).digest('hex');
           const p=await parser(f.file,c);const after=fs.statSync(f.file);if(after.size!==f.size||after.mtimeMs!==f.mtime)continue;
           if(closed||generation!==epoch)break;
           if(mode!=='recent'&&!inScope(p.at)){if(mode==='auto')cache.set(f.file,stamp);continue;}
           const result=store.acceptReplay(p,hash);status.scanned++;status[result.kind==='recorded'?'recorded':result.kind==='duplicate'?'duplicates':'skipped']++;
-          status.recent.unshift({name:path.basename(f.file),hash,kind:result.kind,message:result.message,at:p.at,players:p.players.map(x=>({name:x.name,toonHandle:x.toonHandle}))});status.recent=status.recent.slice(0,15);cache.set(f.file,stamp);onUpdate();
+          const missingUnits=['recorded','duplicate'].includes(result.kind)&&['zerglings','zealots'].some(k=>p.dailyMetrics?.[k]==null);
+          // Retry incomplete unit statistics twice, without parsing every file on every poll.
+          // Manual scans, a changed file, or reconfiguration can always attempt again.
+          if(missingUnits){const attempts=(retry?.stamp===stamp?retry.attempts:0)+1;metricRetries.set(f.file,{stamp,attempts,nextAt:attempts<3?now()+[30000,120000][attempts-1]:Infinity});}else metricRetries.delete(f.file);
+          status.recent.unshift({name:path.basename(f.file),hash,kind:result.kind,message:result.message+(missingUnits?' · 单位统计未完成：'+(p.dailyMetrics?.note||'尚未解析') :''),at:p.at,players:p.players.map(x=>({name:x.name,toonHandle:x.toonHandle}))});status.recent=status.recent.slice(0,15);cache.set(f.file,stamp);onUpdate();
         }catch(error){status.errors.push({name:path.basename(f.file),message:error.message});status.errors=status.errors.slice(-15);onUpdate();}
       }
       status.message=`检查 ${status.scanned} 盘 · 新增/关联 ${status.recorded} · 已处理 ${status.duplicates} · 跳过 ${status.skipped}`+(status.errors.length?' · 部分解析失败，会重试':'');

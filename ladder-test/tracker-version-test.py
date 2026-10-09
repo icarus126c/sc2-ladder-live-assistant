@@ -17,6 +17,7 @@ class TrackerVersionTests(unittest.TestCase):
             raise ImportError('missing protocol')
         with patch.object(parser,'build',side_effect=build):
             self.assertEqual(parser.load_tracker_protocol(97579),(old,'compatible-97579'))
+            self.assertEqual(parser.load_tracker_protocol(98310),(replay_protocol98310,None))
             self.assertEqual(parser.load_tracker_protocol(98370),(replay_protocol98310,'compatible-98370-via-98310'))
             with self.assertRaisesRegex(ValueError,'暂不支持版本 99999'):parser.load_tracker_protocol(99999)
 

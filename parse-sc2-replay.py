@@ -99,9 +99,9 @@ def load_tracker_protocol(base_build):
         # Never use these aliases for bit-packed init data or game events.
         if base_build == 97579:
             return build(95299), "compatible-97579"
-        if base_build == 98370:
+        if base_build in (98310, 98370):
             import replay_protocol98310
-            return replay_protocol98310, "compatible-98370-via-98310"
+            return replay_protocol98310, None if base_build == 98310 else "compatible-98370-via-98310"
         raise ValueError(f"暂不支持版本 {base_build} 的单位跟踪统计")
 
 
