@@ -2,8 +2,8 @@ const shared={Theme:'team',Background:'gradient',BackgroundImage:'',BackgroundVi
 const sceneDefaults=Object.fromEntries(['waiting','break','loading','custom'].flatMap(p=>Object.entries(shared).map(([k,v])=>[p+k,v])));
 Object.assign(sceneDefaults,{breakTitle:'稍作休息，马上回来',breakNote:'补充能量，下一局继续',breakKicker:'TEAM AENEAS / BE RIGHT BACK',breakShowMMR:false,breakShowRecord:false,breakShowMatchups:false,breakShowPhase:false,loadingTheme:'starcraft',loadingTitle:'正在载入下一场',loadingNote:'准备就绪，比赛开始后自动切回游戏',loadingKicker:'MATCH LOADING',loadingShowMMR:false,loadingShowRecord:false,loadingShowMatchups:false,loadingShowPhase:true});
 Object.assign(sceneDefaults,{customTheme:'custom',customTitle:'自定义场景',customNote:'',customKicker:'',customTeamName:'',customShowName:false,customShowMMR:false,customShowRecord:false,customShowMatchups:false,customShowPhase:false,customPanelOpacity:0});
-const scenePrefixes=['game','waiting','loading','break','blank','custom'],layers=['Frame','Keyboard','Scoreboard','DailyWidget','Resources','Gifts','Income','Raffle'];
-for(const p of scenePrefixes)for(const layer of layers)sceneDefaults[p+'Show'+layer]=!['blank','custom'].includes(p)&&(layer==='Frame'||layer==='Keyboard'||layer==='Scoreboard'||layer==='Resources'?p==='game':layer==='DailyWidget'?p!=='loading':true);
+const scenePrefixes=['game','waiting','loading','break','blank','custom'],layers=['Frame','Keyboard','Scoreboard','DailyWidget','Resources','Sticker','Gifts','Income','Raffle'];
+for(const p of scenePrefixes)for(const layer of layers)sceneDefaults[p+'Show'+layer]=!['blank','custom'].includes(p)&&(layer==='Frame'||layer==='Keyboard'||layer==='Scoreboard'||layer==='Resources'?p==='game':layer==='Sticker'?['game','waiting','break'].includes(p):layer==='DailyWidget'?p!=='loading':true);
 const imageURL=/^\/(?:(?:waiting-backgrounds|scene-media)\/[a-f\d]{64}\.(png|jpg|webp)|style-assets\/[a-f\d]{64}\.png|assets\/nicole-(?:waiting|away)-v1\.png)$/,videoURL=/^\/scene-media\/[a-f\d]{64}\.(mp4|webm)$/;
 function sanitizeScenes(input,c){
   for(const p of ['waiting','break','loading','custom']){

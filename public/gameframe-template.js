@@ -17,7 +17,7 @@
   for(const [key,t] of Object.entries(luxury.styles))themes[key]={name:t.name,accent:t.accent,note:'全新豪华款 · 手绘装饰填充底部空闲区，固定镂空保留小地图、时间、农民/部队、单位血量、攻防与技能。'};
   themes.custom={name:'已安装 · 自定义边框',accent:'#83c5b6',note:'完整透明PNG边框；面板开关仅适用于内置矢量模板，自定义图片整体缩放与移动。'};
   const assetDefaults={nailong:'/assets/nailong-meme-v1.png',anes:'/assets/bluegold-logo.png',naiwa:'/assets/naiwa-keys-v1.png',nahida:'/assets/nahida-frame-v1.png',vesna:'/assets/vesna-keys-v1.png'};
-  function build(c,{assets={}}={}){
+  function buildUnprotected(c,{assets={}}={}){
     const accent=/^#[a-f\d]{6}$/i.test(c.gameFrameAccent||'')?c.gameFrameAccent:'#83c5b6',number=(key,fallback,min,max)=>Number.isFinite(c[key])?Math.max(min,Math.min(max,c[key])):fallback;
     const thickness=number('gameFrameThickness',3,1,6),opacity=number('gameFrameOpacity',90,20,100)/100,scale=number('gameFrameScale',100,70,115)/100,x=number('gameFrameX',0,-120,120),y=number('gameFrameY',0,-80,60),style=Object.hasOwn(themes,c.gameFrameStyle)?c.gameFrameStyle:'slim',slim=style!=='corners',on=key=>c['gameFrame'+key]!==false;
     if(Object.hasOwn(luxury.styles,style))return luxury.build(c,{assets});
@@ -60,5 +60,5 @@
     }
     return `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" data-frame-theme="${style}" role="img" aria-label="${themes[style].name}"><title>${themes[style].name}</title><defs><linearGradient id="frameMetal" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#9aa5ad"/><stop offset=".28" stop-color="#495764"/><stop offset=".65" stop-color="#1b2733"/><stop offset="1" stop-color="#727f8b"/></linearGradient><linearGradient id="frameHoney" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff5bf"/><stop offset=".3" stop-color="${accent}"/><stop offset="1" stop-color="#eda323"/></linearGradient><linearGradient id="frameBlue" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#528dcc"/><stop offset=".45" stop-color="#254e83"/><stop offset="1" stop-color="#14283e"/></linearGradient></defs><g opacity="${opacity}" transform="translate(${x} ${y}) translate(960 1080) scale(${scale}) translate(-960 -1080)" stroke-linejoin="round" stroke-linecap="round">${paths}${decorations}</g></svg>`;
   }
-  return{build,panels,themes,assetDefaults};
+  function build(c,options={}){const result=buildUnprotected(c,options);if(Object.hasOwn(luxury.styles,c.gameFrameStyle)||['artanis','zealot'].includes(c.gameFrameStyle))return result;const areas=luxury.protectedAreas.concat(c.gameFrameCoverage==='safe'?[{name:'full-unit-information',x:364,y:879,w:1008,h:193}]:[]),at=result.indexOf('>')+1,mask='<defs><mask id="legacy-hud-protection" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080" style="mask-type:luminance"><rect width="1920" height="1080" fill="white"/>'+areas.map(a=>'<rect data-protected="'+a.name+'" x="'+a.x+'" y="'+a.y+'" width="'+a.w+'" height="'+a.h+'" fill="black"/>').join('')+'</mask></defs>';return result.slice(0,at)+mask+'<g mask="url(#legacy-hud-protection)">'+result.slice(at).replace(/<\/svg>$/,'</g></svg>');}return{build,panels,themes,assetDefaults};
 });

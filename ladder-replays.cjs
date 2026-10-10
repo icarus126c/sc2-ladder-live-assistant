@@ -3,8 +3,9 @@ const {defaults:appearance,sanitize:style,dayKey}=require('./ladder.cjs');
 const {sceneDefaults,sanitizeScenes}=require('./scene-settings.cjs');
 const daily=require('./daily-stats.cjs');
 const resources=require('./public/resource-template.js');
+const stickers=require('./public/sticker-template.js');
 const storage=require('./data-storage.cjs');
-const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
+const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.defaults,...stickers.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
   scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
   waitingLayout:'center',waitingImageFit:'cover',waitingDim:35,waitingPanelOpacity:35,waitingWidth:1320,waitingTitleSize:66,waitingKicker:'TEAM AENEAS / LADDER SESSION',
@@ -17,7 +18,7 @@ const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.de
 const validMMR=n=>Number.isInteger(n)&&n>0&&n<=20000;
 const race=r=>({Terran:'T',Protoss:'P',Zerg:'Z',Random:'R',Terr:'T',Prot:'P'})[r]||r;
 function sanitize(input,base=defaults){
-  const c=resources.sanitize(input,daily.sanitize(input,sanitizeScenes(input,style(input,base))));
+  const c=stickers.sanitize(input,resources.sanitize(input,daily.sanitize(input,sanitizeScenes(input,style(input,base)))));
   for(const key of ['replayDirectory','toonHandle'])if(key in input){if(typeof input[key]!=='string'||input[key].length>1024||input[key].includes('\0'))throw Error('目录或账号格式不正确');c[key]=input[key].trim();}
   if(c.toonHandle&&!/^\d+-S2-\d+-\d+$/.test(c.toonHandle))throw Error('账号请填写完整格式，例如 5-S2-1-9469666');
   if('mmrMode'in input){if(!['replay','estimate','manual'].includes(input.mmrMode))throw Error('MMR模式不正确');c.mmrMode=input.mmrMode;}

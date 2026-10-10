@@ -10,7 +10,7 @@
   function updateLayout(){const next=(config.catView||'rear')+':'+(config.catKeyboardSide||'left')+':'+(config.catCharacter||'cat')+':'+(config.catCurve!==false);if(next===layout)return;layout=next;widget.innerHTML=window.CatKeyboardTemplate.build(config);keys=[...widget.querySelectorAll('[data-cat-key]')];avatar=widget.querySelector('.cat-avatar');combo=widget.querySelector('.cat-combo');rhythm=widget.querySelector('.cat-rhythm');lastCombo=lastRhythm='';lastPose=-1;lastBusy=null;}
   const render=(state,options={})=>{config=state.ladder.config;scene=state.scene;preview=options.preview===true;standalone=options.standalone===true;ready=true;
     updateLayout();
-    widget.hidden=!preview&&(scene==='blank'||config.enabled===false||config.catEnabled!==true||(!standalone&&!(window.SceneCustomization?.allowed(config,scene,'Keyboard',scene==='game')??(scene==='game'))));
+    widget.hidden=(!preview||options.respectVisibility===true)&&(scene==='blank'||config.enabled===false||config.catEnabled!==true||(!standalone&&!(window.SceneCustomization?.allowed(config,scene,'Keyboard',scene==='game')??(scene==='game'))));
     inputConnection();
     widget.style.left=(config.catX??1400)+'px';widget.style.top=(config.catY??320)+'px';widget.style.transform=`scale(${(config.catWidth??460)/570})`;
     widget.style.opacity=(config.catOpacity??100)/100;widget.style.setProperty('--cat-accent',config.catAccent||'#f2a7d5');

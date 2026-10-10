@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {createReplayStore,sanitize,defaults}=require('../ladder-replays.cjs'),template=require('../public/gameframe-template.js'),{createAssistant}=require('../ladder-server.cjs');
 test('game console frame contains only narrow unfilled contours in the bottom HUD area',()=>{
   const svg=template.build(defaults),paths=[...svg.matchAll(/<path\b[^>]*>/g)].map(m=>m[0]);assert.ok(paths.length>0);for(const p of paths)assert.match(p,/fill="none"/);
-  assert.doesNotMatch(svg,/<(rect|image|foreignObject|text)\b/);assert.match(svg,/viewBox="0 0 1920 1080"/);
+  assert.doesNotMatch(svg.replace(/<mask[\s\S]*?<\/mask>/g,''),/<(rect|image|foreignObject|text)\b/);assert.match(svg,/legacy-hud-protection/);assert.match(svg,/viewBox="0 0 1920 1080"/);
   let maximumArea=0;for(const p of template.panels){assert.ok(p.y>=789);assert.ok(p.x>=0&&p.x+p.w<=1920&&p.y+p.h<=1080);assert.ok(Math.min(p.w,p.h)/2>10,'panel centres are clear');maximumArea+=2*(p.w+p.h)*10;}
   assert.ok(maximumArea/(1920*1080)<.03,'even the thickest border covers less than 3% of the full canvas');
   assert.doesNotMatch(template.build({...defaults,gameFrameMinimap:false}),/data-panel="minimap"/);assert.match(template.build({...defaults,gameFrameStyle:'corners'}),/data-panel="commands"/);
