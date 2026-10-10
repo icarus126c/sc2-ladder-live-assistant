@@ -88,7 +88,7 @@
   function updateFramePreview(){
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
     $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
-    $('gameFrameCoverageField').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
+    $('gameFrameCoverageField').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
     $('gameFrameDraftStatus').textContent=frameDirty?'预览草稿 · 尚未应用':'已保存';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));
     for(const id of ['gameFramePreview','gameFrameFullPreview'])if(state)$(id).contentWindow?.postMessage({type:'gameFrameDraft',config},location.origin);
