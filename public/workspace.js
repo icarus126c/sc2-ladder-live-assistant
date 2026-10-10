@@ -5,7 +5,7 @@
   views.appearance={name:'画面装饰',title:'装饰画面，也照顾游戏信息。',eyebrow:'画面装饰',description:'控制台、资源模板与角色挂件，在这里分别设置。想整套更换风格，可用一键换装。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
-  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增薇斯纳、纳西妲、妮可豪华控制台。角色和装饰自然延伸出边框，允许轻微遮挡；小地图和技能区保持可读，可分别调整装饰大小、范围与透明度。'};
+  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'先试穿款式，再调装饰、透明度与位置。豪华款按绿 / 红 / 蓝分区：关键信息留空，空闲面板完整装饰，中间以淡花纹衔接。'};
   views.stickers={name:'角色挂件',title:'把喜欢的角色，放进直播画面。',eyebrow:'画面装饰 / 角色挂件',description:'选择角色或上传图片，拖动位置、调整大小，再选择在哪些场景显示。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'画面装饰 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
   views.catkeyboard={name:'按键助手',title:'按键助手',eyebrow:'按键小助手',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
@@ -42,7 +42,7 @@
   }));
   async function perform(fn){try{await fn();}catch(error){window.AssistantActions.toast(error.message);if(state)render(state);}}
   const configure=config=>window.AssistantActions.act('ladderConfigure',{config});
-  function connection(value){connected=value;$('gameFrameStyle').disabled=!state;window.ResourceWorkspace?.connection(value);window.StickerWorkspace?.connection(value);window.SceneEditor?.connection(value);window.DailyWorkspace?.connection(value);window.LiveWorkspace?.connection(value);window.OutfitWorkspace?.connection(value);window.CatWorkspace?.connection(value);for(const id of ['homeScoreboard','homeHUD','scoreboardEnabled','homeGameFrame','gameFrameEnabled','gameFrameApply','scoreboardApply',...Object.keys(mainSwitches),'mainFrameStyle','mainKeyboardSide','mainKeyboardView','mainTextSave','mainTextDiscard'])$(id).disabled=!value||!state;for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!value||!state;for(const id of Object.keys(mainTextFields))$(id).disabled=!value||!state;for(const key of scoreFields)$(key).disabled=!state;$('scoreboardAccentCustom').disabled=!state;for(const b of document.querySelectorAll('[data-score-template],[data-score-position],[data-score-size],[data-frame-quick]'))b.disabled=!state;$('mainKeyboardSide').disabled=!value||!state||state.ladder.config.catView==='classic';window.SceneWorkspace?.connection(value);}
+  function connection(value){connected=value;for(const b of document.querySelectorAll('[data-frame-apply]'))b.disabled=!value||!state;$('gameFrameStyle').disabled=!state;window.ResourceWorkspace?.connection(value);window.StickerWorkspace?.connection(value);window.SceneEditor?.connection(value);window.DailyWorkspace?.connection(value);window.LiveWorkspace?.connection(value);window.OutfitWorkspace?.connection(value);window.CatWorkspace?.connection(value);for(const id of ['homeScoreboard','homeHUD','scoreboardEnabled','homeGameFrame','gameFrameEnabled','gameFrameApply','scoreboardApply',...Object.keys(mainSwitches),'mainFrameStyle','mainKeyboardSide','mainKeyboardView','mainTextSave','mainTextDiscard'])$(id).disabled=!value||!state;for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!value||!state;for(const id of Object.keys(mainTextFields))$(id).disabled=!value||!state;for(const key of scoreFields)$(key).disabled=!state;$('scoreboardAccentCustom').disabled=!state;for(const b of document.querySelectorAll('[data-score-template],[data-score-position],[data-score-size],[data-frame-quick]'))b.disabled=!state;$('mainKeyboardSide').disabled=!value||!state||state.ladder.config.catView==='classic';window.SceneWorkspace?.connection(value);}
   function obsStatus(ready){$('homeOBSStatus').textContent=ready?'OBS已连接':'OBS未连接';$('homeOBSDot').classList.toggle('connected',ready);}
   function render(next){state=next;previewHost.publish(next);window.ResourceWorkspace?.render(next);window.StickerWorkspace?.render(next);window.SceneEditor?.render(next);window.DailyWorkspace?.render(next);window.LiveWorkspace?.render(next);window.OutfitWorkspace?.render(next);window.CatWorkspace?.render(next);const c=next.ladder.config,s=next.ladder.stats,live=next.ladder.session?.stats||s;
     for(const [id,key]of Object.entries(mainSwitches))$(id).checked=c[key]===true;
@@ -53,7 +53,7 @@
     for(const b of document.querySelectorAll('[data-main-record]'))b.disabled=!connected;
 
     $('homeScoreboard').checked=c.scoreboardEnabled;$('scoreboardEnabled').checked=c.scoreboardEnabled;$('homeHUD').checked=c.showHUD;
-    $('homeGameFrame').checked=c.gameFrameEnabled;$('gameFrameEnabled').checked=c.gameFrameEnabled;$('gameFrameToolState').textContent=c.gameFrameEnabled?'已启用':'未启用';
+    $('gameFrameLiveStyle').textContent='当前直播：'+(window.GameFrameTemplate.themes[c.gameFrameStyle]?.name||c.gameFrameStyle);for(const b of document.querySelectorAll('[data-frame-style]'))b.dataset.live=String(b.dataset.frameStyle===c.gameFrameStyle);$('homeGameFrame').checked=c.gameFrameEnabled;$('gameFrameEnabled').checked=c.gameFrameEnabled;$('gameFrameToolState').textContent=c.gameFrameEnabled?'已启用':'未启用';
     if(!frameDirty)for(const key of frameFields){const input=$(key);if(input.type==='checkbox')input.checked=c[key];else input.value=c[key];}
     updateFramePreview();$('gameFrameURL').value=location.origin+'/gameframe';
     $('scoreboardToolState').textContent=c.scoreboardEnabled?'已启用':'未启用';$('overlayToolState').textContent=c.showHUD?'已启用':'未启用';
@@ -89,16 +89,19 @@
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
     $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
     $('gameFrameCoverageField').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
-    $('gameFrameDraftStatus').textContent=frameDirty?'预览草稿 · 尚未应用':'已保存';
+    $('gameFrameDraftStatus').textContent=frameDirty?'正在试穿 · 尚未应用':'已保存';for(const key of ['gameFrameOpacity','gameFrameDecorationScale'])$(key+'Value').textContent=config[key]+'%';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));
     if(state)$('gameFramePreview').contentWindow?.postMessage({type:'gameFrameDraft',config},location.origin);
   }
   function frameChanged(){frameDirty=true;updateFramePreview();}
+  for(const button of document.querySelectorAll('[data-frame-show-preview]'))button.addEventListener('click',()=>document.querySelector('.frame-preview-panel').scrollIntoView({block:'start',behavior:'smooth'}));
+  for(const filter of document.querySelectorAll('[data-frame-filter]'))filter.addEventListener('click',()=>{const choice=filter.dataset.frameFilter;for(const b of document.querySelectorAll('[data-frame-filter]'))b.setAttribute('aria-pressed',String(b===filter));for(const b of document.querySelectorAll('[data-frame-style]')){const style=b.dataset.frameStyle,luxury=style.endsWith('-luxury'),light=['slim','corners'].includes(style);b.hidden=choice==='luxury'?!luxury:choice==='light'?!light:choice==='character'?(luxury||light):false;}});
   function frameCamera(){
     $('gameFramePreviewContainer').dataset.camera=framePreviewMode;
     for(const button of document.querySelectorAll('[data-frame-preview-mode]'))button.setAttribute('aria-pressed',String(button.dataset.framePreviewMode===framePreviewMode));
-    $('gameFramePreview').contentWindow?.postMessage({type:'gameFrameCamera',mode:framePreviewMode},location.origin);
+    $('gameFramePreview').contentWindow?.postMessage({type:'gameFrameCamera',mode:framePreviewMode},location.origin);$('gameFramePreview').contentWindow?.postMessage({type:'gameFrameGuides',enabled:$('gameFrameGuides').checked},location.origin);
   }
+  $('gameFrameGuides').addEventListener('change',frameCamera);
   $('gameFramePreview').addEventListener('load',()=>{frameCamera();updateFramePreview();});
   for(const button of document.querySelectorAll('[data-frame-preview-mode]'))button.addEventListener('click',()=>{framePreviewMode=button.dataset.framePreviewMode;frameCamera();});
   $('gameFrameStyle').addEventListener('change',()=>{const style=$('gameFrameStyle').value;if(style.endsWith('-luxury'))$('gameFrameCoverage').value='rich';if(style!=='custom')$('gameFrameAccent').value=window.GameFrameTemplate.themes[style].accent;frameChanged();});

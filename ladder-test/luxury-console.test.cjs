@@ -21,4 +21,8 @@ test('all luxury source pages load their module and transparent assets, and SVG 
   const bytes=fs.readFileSync(path.join(__dirname,'../public/assets',file));assert.equal(bytes[25],6,'PNG retains alpha');assert.deepEqual(Buffer.from(await(await fetch(root+'/assets/'+file)).arrayBuffer()),bytes);app.ladder.configure({gameFrameStyle:style,gameFrameCoverage:'rich'});const exported=await(await fetch(root+'/gameframe.svg')).text();assert.match(exported,/href="data:image\/png;base64,/);assert.doesNotMatch(exported,/href="\/assets\//);assert.match(exported,/data-protected="command-card"/);
  }
  assert.equal((await fetch(root+'/assets/console-game-reference.png')).status,200);
+ for(const style of Object.keys(F.themes).filter(k=>k!=='custom')){
+  const response=await fetch(root+'/assets/frame-thumb-'+style+'.png');assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/image\/png/);const bytes=Buffer.from(await response.arrayBuffer());assert.equal(bytes.readUInt32BE(16),576);assert.equal(bytes.readUInt32BE(20),138);
+ }
+ assert.equal((await fetch(root+'/assets/frame-thumb-unknown.png')).status,404);
 });
