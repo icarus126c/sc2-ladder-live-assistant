@@ -4,6 +4,7 @@ test('luxury frame keeps annotated information masks outside adjustable art and 
  for(const style of Object.keys(L.styles)){
   const c={...defaults,gameFrameStyle:style,gameFrameCoverage:'rich',gameFrameScale:115,gameFrameX:120,gameFrameY:60};const svg=F.build(c);assert.match(svg,/<g mask="url\(#luxury-.*-safety\)"><g opacity=.*transform="translate\(120 60\)/);for(const area of L.protectedAreas)assert.ok(svg.includes('data-protected="'+area.name+'"'));assert.match(svg,/data-decoration="character"/);assert.doesNotMatch(svg,/data-protected="full-unit-information"/);
   assert.match(F.build({...c,gameFrameCoverage:'safe'}),/data-protected="full-unit-information"/);assert.doesNotMatch(F.build({...c,gameFrameCoverage:'safe'}),/data-decoration="character"|selection-left/);
+  assert.match(svg,/data-art-flow="natural" mask="url\(#luxury-.*-natural\)"/);assert.doesNotMatch(svg,/data-protected="playfield"/);assert.match(F.build({...c,gameFrameCoverage:'safe'}),/data-protected="playfield"/);
   assert.doesNotMatch(F.build({...c,gameFrameDecorations:false}),/<image|data-decoration=/);
   assert.doesNotMatch(F.build({...c,gameFrameSelection:false,gameFramePortrait:false,gameFrameMinimap:false,gameFrameCommands:false}),/<image|data-panel=/);
  }

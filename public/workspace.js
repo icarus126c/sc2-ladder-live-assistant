@@ -5,7 +5,7 @@
   views.appearance={name:'外观与小助手',title:'装饰画面，也照顾游戏信息。',eyebrow:'外观与小助手',description:'控制台、按键助手、资源模板与角色挂件，在这里分别设置。想整套更换风格，可用一键换装。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
-  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增薇斯纳、纳西妲、妮可豪华控制台。按参考图填充空闲区域，固定镂空保留小地图、时间、单位血量、攻防与技能；可分别调整装饰与透明度。'};
+  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增薇斯纳、纳西妲、妮可豪华控制台。角色和装饰自然延伸出边框，允许轻微遮挡；小地图和技能区保持可读，可分别调整装饰大小、范围与透明度。'};
   views.stickers={name:'角色挂件',title:'把喜欢的角色，放进直播画面。',eyebrow:'小助手 / 角色挂件',description:'选择角色或上传图片，拖动位置、调整大小，再选择在哪些场景显示。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'小助手 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
   views.catkeyboard={name:'按键助手',title:'按键助手',eyebrow:'外观与小助手 / 按键助手',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
@@ -88,7 +88,7 @@
   function updateFramePreview(){
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
     $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
-    $('gameFrameCoverageField').hidden=!['artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
+    $('gameFrameCoverageField').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
     $('gameFrameDraftStatus').textContent=frameDirty?'预览草稿 · 尚未应用':'已保存';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));
     for(const id of ['gameFramePreview','gameFrameFullPreview'])if(state)$(id).contentWindow?.postMessage({type:'gameFrameDraft',config},location.origin);
