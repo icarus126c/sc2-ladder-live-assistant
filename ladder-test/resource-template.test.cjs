@@ -19,9 +19,9 @@ test('transparent resource icons have no backdrop; glow fades completely and sol
  assert.match(R.build({...R.defaults,resourceBackdropStyle:'solid',resourceBackdrop:'#123456'}),/data-resource-backdrop="solid"[^>]+fill="#123456"/);
  assert.ok(S.fields('game').includes('resourceBackdropStyle'));
 });
-test('resource settings share the assistant category while existing resource links still work',()=>{
+test('decoration tools share their category and keyboard keeps an independent sidebar entry',()=>{
  const html=fs.readFileSync(require.resolve('../public/ladder.html'),'utf8');
- assert.doesNotMatch(html,/data-route="resources"/);assert.match(html,/data-route="appearance"[^>]*>.*?<span>外观与小助手<\/span>/s);
- assert.equal((html.match(/aria-label="外观与小助手功能"/g)||[]).length,4);assert.match(html,/href="#resources" aria-current="page">资源模板/);
+ assert.match(html,/data-route="catkeyboard"/);assert.doesNotMatch(html,/data-route="resources"/);assert.match(html,/data-route="appearance"[^>]*>.*?<span>画面装饰<\/span>/s);
+ assert.equal((html.match(/aria-label="画面装饰功能"/g)||[]).length,3);assert.match(html,/href="#resources" aria-current="page">资源模板/);
  assert.match(html,/id="resourceBackdropStyle"/);assert.match(html,/id="resourceIconScale"[^>]+max="200"/);
 });
