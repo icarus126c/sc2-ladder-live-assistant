@@ -4,7 +4,7 @@
   views.scenes={name:'画面自定义',title:'每个场景，都按你的习惯。',eyebrow:'场景工作台',description:'选择场景，定制显示内容与布局。这里只编辑预览，应用后更新直播。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
-  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增大主教与狂热者星灵控制台，信息保护镂空保留小地图、单位与技能；可预览调整装甲边沿。'};
+  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增薇斯纳、纳西妲、妮可豪华控制台。按参考图填充空闲区域，固定镂空保留小地图、时间、单位血量、攻防与技能；可分别调整装饰与透明度。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'小助手 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
   views.catkeyboard={name:'小助手',title:'小助手',eyebrow:'按键与资源',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
@@ -86,7 +86,7 @@
   function updateFramePreview(){
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
     $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
-    $('gameFrameCoverageField').hidden=!['artanis','zealot'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
+    $('gameFrameCoverageField').hidden=!['artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
     $('gameFrameDraftStatus').textContent=frameDirty?'预览草稿 · 尚未应用':'已保存';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));
     for(const id of ['gameFramePreview','gameFrameFullPreview'])if(state)$(id).contentWindow?.postMessage({type:'gameFrameDraft',config},location.origin);
@@ -94,7 +94,7 @@
   function frameChanged(){frameDirty=true;updateFramePreview();}
   for(const id of ['gameFramePreview','gameFrameFullPreview'])$(id).addEventListener('load',updateFramePreview);
   $('gameFrameForm').addEventListener('input',frameChanged);$('gameFrameForm').addEventListener('change',frameChanged);
-  for(const button of document.querySelectorAll('[data-frame-style]'))button.addEventListener('click',()=>{$('gameFrameStyle').value=button.dataset.frameStyle;$('gameFrameAccent').value=window.GameFrameTemplate.themes[button.dataset.frameStyle].accent;frameChanged();});
+  for(const button of document.querySelectorAll('[data-frame-style]'))button.addEventListener('click',()=>{if(button.dataset.frameStyle.endsWith('-luxury')&&$('gameFrameStyle').value!==button.dataset.frameStyle)$('gameFrameCoverage').value='rich';$('gameFrameStyle').value=button.dataset.frameStyle;$('gameFrameAccent').value=window.GameFrameTemplate.themes[button.dataset.frameStyle].accent;frameChanged();});
   for(const button of document.querySelectorAll('[data-frame-color]'))button.addEventListener('click',()=>{$('gameFrameAccent').value=button.dataset.frameColor;frameChanged();});
   for(const button of document.querySelectorAll('[data-frame-quick]'))button.addEventListener('click',()=>{const style=button.dataset.frameQuick;for(const [key,value]of Object.entries({gameFrameThickness:style==='light'?2:3,gameFrameOpacity:style==='light'?75:90,gameFrameDecorations:style!=='off',gameFrameDecorationScale:style==='light'?65:100})){const input=$(key);if(input.type==='checkbox')input.checked=value;else input.value=value;}frameChanged();});
   $('gameFrameForm').addEventListener('submit',event=>{event.preventDefault();perform(async()=>{const next=await configure(frameConfig());frameDirty=false;render(next);window.AssistantActions.toast('控制台模板已应用');});});
@@ -102,7 +102,7 @@
   $('gameFrameReset').addEventListener('click',()=>{for(const [key,value]of Object.entries({gameFrameScale:100,gameFrameX:0,gameFrameY:0}))$(key).value=value;frameChanged();});
   for(const [key,theme]of Object.entries(window.GameFrameTemplate.themes)){const option=document.createElement('option');option.value=key;option.textContent=theme.name;$('mainFrameStyle').append(option);}
   for(const [id,key]of Object.entries(mainSwitches))$(id).addEventListener('change',()=>perform(()=>configure({[key]:$(id).checked})));
-  $('mainFrameStyle').addEventListener('change',()=>perform(()=>{const style=$('mainFrameStyle').value;return configure({gameFrameStyle:style,...(style==='custom'?{}:{gameFrameAccent:window.GameFrameTemplate.themes[style].accent})});}));
+  $('mainFrameStyle').addEventListener('change',()=>perform(()=>{const style=$('mainFrameStyle').value;return configure({gameFrameStyle:style,...(style.endsWith('-luxury')?{gameFrameCoverage:'rich'}:{}),...(style==='custom'?{}:{gameFrameAccent:window.GameFrameTemplate.themes[style].accent})});}));
   for(const [id,key]of [['mainKeyboardSide','catKeyboardSide'],['mainKeyboardView','catView']])$(id).addEventListener('change',()=>perform(()=>configure({[key]:$(id).value})));
   $('mainSceneTextForm').addEventListener('input',()=>mainTextDirty=true);
   $('mainSceneTextForm').addEventListener('submit',e=>{e.preventDefault();perform(async()=>{const next=await configure(Object.fromEntries(Object.entries(mainTextFields).map(([id,key])=>[key,$(id).type==='checkbox'?$(id).checked:$(id).value])));mainTextDirty=false;render(next);window.AssistantActions.toast('等待与暂离文字已保存');});});

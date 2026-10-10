@@ -9,6 +9,7 @@
     nicole:{name:'尼可 · 静默星谕',note:'内置 · 正面角色边框、蓝白金星盘与侧脸按键助手',scene:'nicole',frame:'nicole',cat:'nicole',accent:'#e7cb90',score:'compact',hud:'compact',colors:['#10172c','#394c79','#e7cb90'],assets:{cover:'/assets/nicole-waiting-v1.png',waiting:'/assets/nicole-waiting-v1.png',away:'/assets/nicole-away-v1.png'}},
     vesna:{name:'薇斯纳 · 青白雪宴',note:'薇斯纳助手、雪饰边框与青白舞台',scene:'vesna',frame:'vesna',cat:'vesna',accent:'#a4e2df',score:'compact',hud:'compact',colors:['#091d2a','#386e7d','#a4e2df']}
   };
+  for(const [base,name,accent]of [['nahida','纳西妲 · 豪华叶宫','#b9db84'],['vesna','薇斯纳 · 豪华霜剑','#a4e2df'],['nicole','妮可 · 豪华星谕','#d6ccf6']])presets[base+'-luxury']={...presets[base],name,note:'全新豪华控制台 + 同主题助手、等待与暂离画面',frame:base+'-luxury',accent,assets:{...presets[base].assets,cover:'/assets/'+base+'-console-luxury-v1.png'}};
   function resolve(id,installed){return installed&&/^(?:user-|combo-)/.test(String(id))?installed.find(p=>p.id===id):Object.hasOwn(presets,id)?presets[id]:null;}
   function registerInstalled(installed=[],combinations=[]){for(const id of Object.keys(presets))if(/^(?:user-|combo-)/.test(id))delete presets[id];for(const p of installed)if(/^user-[a-z][a-z0-9-]{2,47}$/.test(p.id))presets[p.id]=p;for(const p of combinations)if(/^combo-[a-f0-9]{16}$/.test(p.id)&&p.combination===true)presets[p.id]=p;}
   function normalize(input={},installed){
@@ -32,7 +33,7 @@
     const choice=normalize(input,installed),p=resolve(choice.preset,installed),patch={};
     if(p.combination){for(const key of choice.modules){for(const field of combinationFields[key]){if(choice.preserveMedia&&/Background(?:Image|Video)?$/.test(field))continue;if(choice.preserveLayout&&/(?:Layout|Width)$/.test(field))continue;if(Object.hasOwn(p.patch,field))patch[field]=p.patch[field];}if(choice.enableTools){const field={gameframe:'gameFrameEnabled',catkeyboard:'catEnabled',scoreboard:'scoreboardEnabled',overlay:'showHUD'}[key];if(field)patch[field]=true;}}return patch;}
     for(const key of choice.modules){
-      if(key==='gameframe')Object.assign(patch,{gameFrameStyle:p.frame,gameFrameAccent:p.accent,gameFrameImage:p.assets?.frame||''});
+      if(key==='gameframe')Object.assign(patch,{gameFrameStyle:p.frame,gameFrameAccent:p.accent,gameFrameImage:p.assets?.frame||'',...(p.frame.endsWith('-luxury')?{gameFrameCoverage:'rich'}:{})});
       if(key==='catkeyboard')Object.assign(patch,{catCharacter:p.cat,catAccent:p.accent,catFrontImage:p.assets?.assistantFront||p.assets?.assistantRear||'',catRearImage:p.assets?.assistantRear||p.assets?.assistantFront||''});
       if(key==='scoreboard')Object.assign(patch,{scoreboardTemplate:p.score,scoreboardAccent:p.accent});
       if(key==='overlay')Object.assign(patch,{template:p.hud,accent:p.accent});

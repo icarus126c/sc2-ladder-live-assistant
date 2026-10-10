@@ -11,7 +11,7 @@
     if(preview){document.body.classList.add('preview');$('referenceGround').hidden=false;const image=$('frameReferenceImage');image.src='/frame-reference.png';image.addEventListener('load',()=>image.classList.toggle('frame-reference-full',Math.abs(image.naturalWidth/image.naturalHeight-16/9)<.02));image.addEventListener('error',()=>image.hidden=true);}
     function resize(){const scale=Math.min(innerWidth/1920,innerHeight/(detail?355:1080));$('canvas').style.transform=`scale(${scale})`;$('canvas').style.top=detail?-725*scale+'px':'0';}
     resize();addEventListener('resize',resize);
-    const draw=()=>{if(state)render({...state,ladder:{...state.ladder,config:{...state.ladder.config,...draft}}},{standalone:true,preview});};
+    const draw=()=>{if(preview&&state){const style=draft.gameFrameStyle??state.ladder.config.gameFrameStyle,image=$('frameReferenceImage'),next=style.endsWith('-luxury')?'/assets/console-game-reference.png':'/frame-reference.png';if(image.getAttribute('src')!==next){image.hidden=false;image.src=next;}}if(state)render({...state,ladder:{...state.ladder,config:{...state.ladder.config,...draft}}},{standalone:true,preview});};
     if(preview)addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='gameFrameDraft')return;draft=Object.fromEntries(Object.entries(event.data.config||{}).filter(([key])=>key.startsWith('gameFrame')));draw();});
     window.PreviewConnection.create({preview:preview,onState:next=>{state=next;draw();}});
   }

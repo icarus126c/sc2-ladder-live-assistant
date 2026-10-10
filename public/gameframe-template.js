@@ -1,4 +1,4 @@
-(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./protoss-console.js'));else root.GameFrameTemplate=factory(root.ProtossConsole);})(typeof window==='object'?window:this,(protoss)=>{
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./protoss-console.js'),require('./luxury-console.js'));else root.GameFrameTemplate=factory(root.ProtossConsole,root.LuxuryConsole);})(typeof window==='object'?window:this,(protoss,luxury)=>{
   // Coordinates follow the supplied bottom HUD reference on a 1920 × 1080 canvas.
   const panels=[
     {key:'Minimap',x:5,y:791,w:307,h:281,cut:11},
@@ -14,11 +14,13 @@
   themes.nicole={name:'尼可 · 静默星谕',accent:'#e7cb90',note:'正面尼可与蓝白金透明边框，支持整体缩放与移动。'};
   themes.artanis={name:'阿塔尼斯 · 大主教',accent:'#72d9ef',note:'象牙金铠甲、凯达琳晶体；按16:9星灵控制台镂空保护游戏信息，可选择丰富装饰或仅边沿。'};
   themes.zealot={name:'狂热者 · 灵能双刃',accent:'#8ae9ff',note:'古金战甲、双灵能刀与锐角镶边；游戏信息保护窗口固定，不随装饰缩放移动。'};
+  for(const [key,t] of Object.entries(luxury.styles))themes[key]={name:t.name,accent:t.accent,note:'全新豪华款 · 手绘装饰填充底部空闲区，固定镂空保留小地图、时间、农民/部队、单位血量、攻防与技能。'};
   themes.custom={name:'已安装 · 自定义边框',accent:'#83c5b6',note:'完整透明PNG边框；面板开关仅适用于内置矢量模板，自定义图片整体缩放与移动。'};
   const assetDefaults={nailong:'/assets/nailong-meme-v1.png',anes:'/assets/bluegold-logo.png',naiwa:'/assets/naiwa-keys-v1.png',nahida:'/assets/nahida-frame-v1.png',vesna:'/assets/vesna-keys-v1.png'};
   function build(c,{assets={}}={}){
     const accent=/^#[a-f\d]{6}$/i.test(c.gameFrameAccent||'')?c.gameFrameAccent:'#83c5b6',number=(key,fallback,min,max)=>Number.isFinite(c[key])?Math.max(min,Math.min(max,c[key])):fallback;
     const thickness=number('gameFrameThickness',3,1,6),opacity=number('gameFrameOpacity',90,20,100)/100,scale=number('gameFrameScale',100,70,115)/100,x=number('gameFrameX',0,-120,120),y=number('gameFrameY',0,-80,60),style=Object.hasOwn(themes,c.gameFrameStyle)?c.gameFrameStyle:'slim',slim=style!=='corners',on=key=>c['gameFrame'+key]!==false;
+    if(Object.hasOwn(luxury.styles,style))return luxury.build(c,{assets});
     if(['artanis','zealot'].includes(style))return protoss.build(c,{assets});
     if(style==='custom'||style==='nicole'){const url=style==='nicole'?'/assets/nicole-frame-v1.png':/^\/style-assets\/[a-f\d]{64}\.png$/.test(c.gameFrameImage||'')?c.gameFrameImage:'';return `<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" data-frame-theme="${style}" role="img" aria-label="${themes[style].name}"><title>${themes[style].name}</title><g opacity="${opacity}" transform="translate(${x} ${y}) translate(960 1080) scale(${scale}) translate(-960 -1080)">${url?`<image href="${escape((style==='nicole'?assets.nicole:assets.customFrame)||url)}" width="1920" height="1080"/>`:''}</g></svg>`;}
     const paths=panels.filter(p=>c['gameFrame'+p.key]!==false).map(p=>{
