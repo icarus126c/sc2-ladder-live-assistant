@@ -2,12 +2,13 @@
   const $=id=>document.getElementById(id);
   const views={tools:{name:'工具库',title:'选择今天要用的工具。',eyebrow:'按需添加 · 自由组合',description:'从直播预览开始，把需要的工具加入你的直播。'},console:{name:'直播预览',title:'直播预览',eyebrow:'直播主界面',description:'在这里看画面、切场景，独立控制按键与录像助手。'},scoreboard:{name:'战绩计分器',title:'战绩计分器',eyebrow:'战绩工具',description:'选择计分器模板，调整位置，并管理今天的每一局。'},overlay:{name:'信息栏模板',title:'信息栏模板',eyebrow:'直播外观',description:'选择等待或局间展示的信息栏模板，游戏进行时自动隐藏。'},settings:{name:'录像与账号',title:'录像与账号',eyebrow:'个人设置',description:'连接你的游戏身份，让每盘录像都记在正确的账号下。'}};
   views.scenes={name:'画面自定义',title:'每个场景，都按你的习惯。',eyebrow:'场景工作台',description:'选择场景，定制显示内容与布局。这里只编辑预览，应用后更新直播。'};
+  views.appearance={name:'外观与小助手',title:'装饰画面，也照顾游戏信息。',eyebrow:'外观与小助手',description:'控制台、按键助手、资源模板与角色挂件，在这里分别设置。想整套更换风格，可用一键换装。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
   views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'新增薇斯纳、纳西妲、妮可豪华控制台。按参考图填充空闲区域，固定镂空保留小地图、时间、单位血量、攻防与技能；可分别调整装饰与透明度。'};
   views.stickers={name:'角色挂件',title:'把喜欢的角色，放进直播画面。',eyebrow:'小助手 / 角色挂件',description:'选择角色或上传图片，拖动位置、调整大小，再选择在哪些场景显示。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'小助手 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
-  views.catkeyboard={name:'小助手',title:'小助手',eyebrow:'按键与资源',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
+  views.catkeyboard={name:'按键助手',title:'按键助手',eyebrow:'外观与小助手 / 按键助手',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
   views.liveinteraction={name:'直播间互动',title:'让直播间一起参与。',eyebrow:'B站联动',description:'接收礼物、计算收益，使用弹幕口令邀请观众参与抽奖。'};
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
@@ -21,9 +22,9 @@
   const mainSwitches={mainFrameEnabled:'gameFrameEnabled',mainScoreEnabled:'scoreboardEnabled',mainDailyEnabled:'dailyEnabled',mainHUDEnabled:'showHUD'},mainTextFields={mainWaitingTitle:'waitingTitle',mainWaitingNote:'waitingNote',mainBreakTitle:'breakTitle',mainBreakNote:'breakNote',mainWaitingShowText:'waitingShowText',mainBreakShowText:'breakShowText'};
   function route(){const key=location.hash.slice(1);const view=Object.hasOwn(views,key)?key:'console',meta=views[view];
     for(const panel of document.querySelectorAll('[data-view]')){panel.hidden=panel.dataset.view!==view;for(const frame of panel.querySelectorAll('iframe[data-src]')){const target=panel.hidden?'about:blank':frame.dataset.src;if(frame.getAttribute('src')!==target)frame.setAttribute('src',target);}}
-    for(const link of document.querySelectorAll('[data-route]')){if(link.dataset.route===view||(link.dataset.route==='catkeyboard'&&['resources','stickers'].includes(view)))link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
+    for(const link of document.querySelectorAll('[data-route]')){if(link.dataset.route===view||(link.dataset.route==='appearance'&&['gameframe','catkeyboard','resources','stickers'].includes(view)))link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
     $('breadcrumb').textContent=meta.name;$('viewTitle').textContent=meta.title;$('viewEyebrow').textContent=meta.eyebrow;$('viewDescription').textContent=meta.description;$('backTools').hidden=view==='console';$('homeShortcuts').hidden=view!=='console';document.body.dataset.workspaceView=view;document.title=meta.name+' · 天梯直播工作室';
-    if(['waiting','break','gameframe','overlay','catkeyboard','resources','stickers'].includes(view)){$('backTools').href='#scenes';$('backTools').textContent='返回画面自定义';}else{$('backTools').href='#console';$('backTools').textContent='返回直播预览';}
+    if(['gameframe','catkeyboard','resources','stickers'].includes(view)){$('backTools').href='#appearance';$('backTools').textContent='返回外观与小助手';}else if(['waiting','break','overlay'].includes(view)){$('backTools').href='#scenes';$('backTools').textContent='返回画面自定义';}else{$('backTools').href='#console';$('backTools').textContent='返回直播预览';}
     window.scrollTo({top:0,behavior:'instant'});window.CatWorkspace?.route(view);
   }
   addEventListener('hashchange',route);route();

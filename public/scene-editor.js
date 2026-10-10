@@ -40,7 +40,7 @@
     const pick=button('',()=>chooseLayer(layer),'scene-content-pick');pick.setAttribute('aria-pressed',String(selected===layer));pick.append(node('span',meta[0],'scene-content-icon'));
     const copy=node('span',null,'scene-content-copy');copy.append(node('strong',label),node('small',meta[1]));pick.append(copy);
     const toggle=input(key,'','checkbox');toggle.className='scene-content-toggle';const control=field(key);control.setAttribute('aria-label','在'+names[phase]+'显示'+label);
-    const labelNode=node('span');toggle.append(labelNode);card.append(pick,toggle);cards.push({card,control,labelNode});return card;
+    const labelNode=node('span');toggle.append(labelNode);const toggleRow=node('div',null,'scene-content-toggle-row');toggleRow.append(toggle);card.append(pick,toggleRow);cards.push({card,control,labelNode});return card;
   }
   function build(){
     const box=$('sceneEditorFields');box.replaceChildren();controls=[];cards=[];buttons=[];visibilityNote=null;
