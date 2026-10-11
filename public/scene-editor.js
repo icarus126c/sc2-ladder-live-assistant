@@ -3,7 +3,7 @@
   if(!frame)return;
   const names={game:'游戏画面',loading:'比赛载入画面',intermission:'搜索 / 等待画面',break:'暂离画面',blank:'空白场景',custom:'自定义场景'};
   const descriptions={game:'保留游戏画面，搭配边框、计分器与小助手。',loading:'下一场开始前，展示标题与本次直播战报。',intermission:'搜索对手时，用背景、文字和战报填满等待时间。',break:'暂时离开时，告诉观众何时回来。',blank:'隐藏所有助手图层，露出直播软件下方的原始画面。',custom:'为节目、活动或自由组合准备一个独立场景。'};
-  const content={ShowName:'昵称与种族',ShowMMR:'当前 MMR',ShowRecord:'本次直播胜负',ShowMatchups:'对阵种族',ShowPhase:'游戏状态',ShowHUD:'信息栏',ShowLongest:'今日最长对局',ShowZealots:'今日刷叉',ShowZerglings:'今日造狗',ShowWorkersKilled:'击杀对方农民',ShowStrongest:'今日最强对手',ShowDailyTime:'今日对局时长'};
+  const content={ShowName:'昵称与种族',ShowMMR:'当前 MMR',ShowRecord:'本次直播胜负',ShowMatchups:'对阵种族',ShowPhase:'游戏状态',ShowHUD:'信息栏',ShowLongest:'今日最长对局',ShowZealots:'今日刷叉',ShowZerglings:'今日造狗',ShowWorkersKilled:'击杀对方农民',ShowMostWorkersKilled:'单盘最高击杀农民',ShowStrongest:'今日最强对手',ShowDailyTime:'今日对局时长'};
   const layerMeta={Goals:['标','今日挑战与进度'],Frame:['边','装饰游戏边沿'],Keyboard:['键','展示按键与角色'],Scoreboard:['胜','本次直播的胜负'],DailyWidget:['今','今日对局与单位统计'],Resources:['矿','矿物、瓦斯与人口图标'],Gifts:['礼','直播间礼物答谢'],Income:['收','直播间收益信息'],Raffle:['奖','直播间抽奖进度'],Sticker:['贴','自由摆放的图片挂件']};
   const dragTargets={Goals:'goals',Keyboard:'keyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Text:'text',Sticker:'sticker'};
   let state,connected=false,phase='game',draft={},dirty=false,uploading=false,saving=false,lastConfig='',selected='Scoreboard',pendingScene='',controls=[],cards=[],buttons=[],visibilityNote=null;

@@ -12,5 +12,5 @@
     "node": ">=24"
   },
   "license": "MIT",
-  "build": "20261011-goals"
+  "build": "20261011-session-goals"
 }

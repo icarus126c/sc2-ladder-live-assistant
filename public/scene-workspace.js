@@ -1,5 +1,5 @@
 (()=>{
-  const $=id=>document.getElementById(id),suffixes=['Theme','Background','BackgroundImage','BackgroundVideo','VideoMuted','VideoLoop','ShowText','TeamName','Title','Note','Kicker','Color','ColorSecondary','Accent','TextColor','Layout','ImageFit','Dim','PanelOpacity','Width','TitleSize','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest','ShowZerglings','ShowZealots','ShowWorkersKilled','ShowStrongest','ShowDailyTime'],numbers=new Set(['Dim','PanelOpacity','Width','TitleSize']);
+  const $=id=>document.getElementById(id),suffixes=['Theme','Background','BackgroundImage','BackgroundVideo','VideoMuted','VideoLoop','ShowText','TeamName','Title','Note','Kicker','Color','ColorSecondary','Accent','TextColor','Layout','ImageFit','Dim','PanelOpacity','Width','TitleSize','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest','ShowZerglings','ShowZealots','ShowWorkersKilled','ShowMostWorkersKilled','ShowStrongest','ShowDailyTime'],numbers=new Set(['Dim','PanelOpacity','Width','TitleSize']);
   let state,connected=false;
   const editors={waiting:{dirty:false,uploading:false,label:'等待'},break:{dirty:false,uploading:false,label:'暂离'}};
   const config=p=>Object.fromEntries(suffixes.map(s=>{const e=$(p+s);return[p+s,e.type==='checkbox'?e.checked:numbers.has(s)?Number(e.value):e.value];}));

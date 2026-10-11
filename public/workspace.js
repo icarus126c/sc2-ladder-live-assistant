@@ -11,7 +11,7 @@
   views.catkeyboard={name:'按键助手',title:'按键助手',eyebrow:'按键小助手',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
   views.outfits={name:'一键换装',title:'一套风格，整场直播。',eyebrow:'成套外观',description:'先预览游戏、等待与暂离效果，再将喜欢的风格一次应用到所选元素。'};
   views.liveinteraction={name:'直播间互动',title:'让直播间一起参与。',eyebrow:'B站联动',description:'接收礼物、计算收益，使用弹幕口令邀请观众参与抽奖。'};
-  views.goals={name:'今日目标',title:'今天，挑战一个目标。',eyebrow:'每日挑战',description:'按当前账号北京时间今天的战绩自动更新；目标保留，进度每天重新计算。'};
+  views.goals={name:'目标挑战',title:'给今天，或这次直播定个目标。',eyebrow:'目标挑战',description:'选择统计范围，添加目标，再开启直播显示。胜负和单位数量随录像自动更新。'};
   views.maintenance={name:'接入检查与更新',title:'检查连接，放心更新。',eyebrow:'助手维护',description:'检查接入状态，导出不含凭据的诊断报告，或保留数据更新程序。'};
   views.daily={name:'今日数据',title:'每一局，都留下一点战报。',eyebrow:'录像小工具',description:'统计自己的生产与击杀，选择等待、游戏和暂离中的展示内容。'};
   views.tutorial={name:'使用教程',title:'从这里，开始你的直播。',eyebrow:'新手指南',description:'接入直播姬 / OBS，连接自己的录像与账号。每一步都能直接跳转到设置。'};
