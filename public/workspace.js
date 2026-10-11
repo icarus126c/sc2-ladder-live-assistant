@@ -5,7 +5,7 @@
   views.appearance={name:'画面装饰',title:'装饰画面，也照顾游戏信息。',eyebrow:'画面装饰',description:'控制台、资源模板与角色挂件，在这里分别设置。想整套更换风格，可用一键换装。'};
   views.waiting={name:'等待画面',title:'自定义等待画面',eyebrow:'局间外观',description:'用自己的背景、文字和布局，装饰搜索与局间等待的时间。'};
   views.break={name:'暂离画面',title:'自定义暂离画面',eyebrow:'暂离外观',description:'暂离使用独立主题，支持自定义图片与循环视频。'};
-  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'先试穿款式，再调装饰、透明度与位置。豪华款按绿 / 红 / 蓝分区：关键信息留空，空闲面板完整装饰，中间以淡花纹衔接。'};
+  views.gameframe={name:'控制台模板',title:'游戏控制台模板',eyebrow:'游戏外观',description:'三款豪华控制台从零重绘：角色、花饰与控制台连成一体。小地图和中间血量、攻防留空，其余控制台允许覆盖，元素可以自然高出边框。'};
   views.stickers={name:'角色挂件',title:'把喜欢的角色，放进直播画面。',eyebrow:'画面装饰 / 角色挂件',description:'选择角色或上传图片，拖动位置、调整大小，再选择在哪些场景显示。'};
   views.resources={name:'资源模板',title:'换个图标，资源数字照常读。',eyebrow:'画面装饰 / 资源模板',description:'透明大图标或柔和渐变，保留资源数字。先预览，再应用。'};
   views.catkeyboard={name:'按键助手',title:'按键助手',eyebrow:'按键小助手',description:'切换 Q 版大主教、猫娘和原神角色；自定义差分触发键、左右半键盘与自然弧度。'};
@@ -87,7 +87,7 @@
   function frameConfig(){return Object.fromEntries(frameFields.map(key=>{const input=$(key);return[key,input.type==='checkbox'?input.checked:frameNumbers.has(key)?Number(input.value):input.value];}));}
   function updateFramePreview(){
     const config=frameConfig(),theme=window.GameFrameTemplate.themes[config.gameFrameStyle]||window.GameFrameTemplate.themes.slim;
-    $('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
+    const isLuxury=config.gameFrameStyle.endsWith('-luxury');$('gameFramePreviewContainer').dataset.family=isLuxury?'luxury':'regular';$('gameFrameDecorationScaleField').hidden=isLuxury;$('gameFrameCoverageHint').textContent=isLuxury?'全新完整插画保护小地图和中间血量、攻防；右侧技能区可以被美术覆盖。需要保留更多原版界面，可选仅边沿。':'自然溢出保留完整角色与装饰，小地图与技能区持续避让；仅边沿保留更多游戏信息。';$('gameFrameCoverage').querySelector('option[value=rich]').textContent=isLuxury?'完整插画 · 允许覆盖其余控制台':'自然溢出 · 保留完整美术';$('gameFrameBannerTitle').textContent=theme.name;$('gameFrameBannerNote').textContent=theme.note;
     $('gameFrameCoverageField').hidden=['slim','corners'].includes(config.gameFrameStyle);$('gameFrameDecorationSettings').hidden=!['nailong','anes','naiwa','nahida','vesna','artanis','zealot','nahida-luxury','vesna-luxury','nicole-luxury'].includes(config.gameFrameStyle);$('gameFrameMemeField').hidden=!['nailong','naiwa'].includes(config.gameFrameStyle);
     $('gameFrameDraftStatus').textContent=frameDirty?'正在试穿 · 尚未应用':'已保存';for(const key of ['gameFrameOpacity','gameFrameDecorationScale'])$(key+'Value').textContent=config[key]+'%';
     for(const button of document.querySelectorAll('[data-frame-style]'))button.setAttribute('aria-pressed',String(button.dataset.frameStyle===config.gameFrameStyle));

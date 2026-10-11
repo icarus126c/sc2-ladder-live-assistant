@@ -14,7 +14,7 @@
   themes.nicole={name:'尼可 · 静默星谕',accent:'#e7cb90',note:'正面尼可与蓝白金透明边框，支持整体缩放与移动。'};
   themes.artanis={name:'阿塔尼斯 · 大主教',accent:'#72d9ef',note:'象牙金铠甲、凯达琳晶体；按16:9星灵控制台镂空保护游戏信息，可选择丰富装饰或仅边沿。'};
   themes.zealot={name:'狂热者 · 灵能双刃',accent:'#8ae9ff',note:'古金战甲、双灵能刀与锐角镶边；游戏信息保护窗口固定，不随装饰缩放移动。'};
-  for(const [key,t] of Object.entries(luxury.styles))themes[key]={name:t.name,accent:t.accent,note:'连续主题插画 · 红区完整装饰、蓝区淡花纹过渡；小地图、时间、单位血量和攻防图标数值留空，可切换仅边沿。'};
+  for(const [key,t] of Object.entries(luxury.styles))themes[key]={name:t.name,accent:t.accent,note:'从零重绘的完整插画 · 小地图、单位血量和攻防留空；其余控制台允许覆盖，角色与装饰自然高出边框。'};
   themes.custom={name:'已安装 · 自定义边框',accent:'#83c5b6',note:'完整透明PNG边框；面板开关仅适用于内置矢量模板，自定义图片整体缩放与移动。'};
   const assetDefaults={nailong:'/assets/nailong-meme-v1.png',anes:'/assets/bluegold-logo.png',naiwa:'/assets/naiwa-keys-v1.png',nahida:'/assets/nahida-frame-v1.png',vesna:'/assets/vesna-keys-v1.png'};
   function buildUnprotected(c,{assets={}}={}){
