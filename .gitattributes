@@ -1,0 +1,2 @@
+# Preserve the byte-for-byte official protocol source on Windows checkouts.
+replay_protocol98310.py text eol=lf
