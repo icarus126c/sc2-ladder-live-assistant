@@ -3,7 +3,7 @@
  // keep an EventSource, leaving HTTP/1 connection slots available for artwork.
  function create({onState,preview=false,scope=window,EventSourceImpl=EventSource,setTimeoutImpl=setTimeout,clearTimeoutImpl=clearTimeout}={}){
   let closed=false,last=null,retry=null,events=null;
-  function deliver(state){if(!state?.ladder?.config)return;if(last?.serverInstanceId===state.serverInstanceId&&Number.isInteger(state.revision)&&Number.isInteger(last.revision)&&state.revision<last.revision)return;last=state;onState(state);}
+  function deliver(state){if(!state?.ladder?.config)return;if(last?.serverInstanceId===state.serverInstanceId&&Number.isInteger(state.revision)&&Number.isInteger(last.revision)&&state.revision<last.revision)return;last=state;onState(state);if(embedded&&scope.PreviewAssets)scope.PreviewAssets.ready();}
   const embedded=preview&&scope.parent!==scope;
   const receive=event=>{if(closed||event.source!==scope.parent||event.origin!==scope.location.origin||event.data?.type!=='previewState')return;clearTimeoutImpl(retry);retry=null;deliver(event.data.state);};
   function ready(){if(closed||last)return;scope.parent.postMessage({type:'previewReady'},scope.location.origin);retry=setTimeoutImpl(ready,1000);}

@@ -19,6 +19,7 @@ function sanitize(input,base=defaults){if(!input||typeof input!=='object'||Array
 }
 function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data'),sc2Reader,now=Date.now,parser,intervalMs,keyboardSpawn,biliOptions={},accountOptions={}}={}){
   const token=crypto.randomBytes(24).toString('hex'),serverInstanceId=crypto.randomUUID(),clients=new Set(),keyboardClients=new Set(),settings=dataDir?path.join(dataDir,'settings.json'):null;
+  let lastOutputRequestAt=null;
   let config={...defaults,obsMapping:{...defaults.obsMapping}},scene='intermission',revision=0,lastOutfit=null,diagnostics=null,lastBackup=null;
   const canUndoOutfit=()=>!!lastOutfit&&Object.entries(lastOutfit.after).every(([k,v])=>ladder.getConfig()[k]===v);
   config=sanitize(storage.readJSON(settings,defaults,sanitize));
@@ -26,7 +27,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const interactions=createInteractionStore(dataDir?path.join(dataDir,'live-interactions.json'):null,{now});
   const stylePacks=createStylePackStore(dataDir);
   const combinations=createCombinationStore(dataDir?path.join(dataDir,'outfit-combinations.json'):null);
-  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:APP_VERSION,diagnostics,recovery:storage.recoveryWarnings(dataDir),lastBackup,stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
+  const snapshot=()=>({config,scene,transition:null,revision,serverInstanceId,appVersion:APP_VERSION,lastOutputRequestAt,diagnostics,recovery:storage.recoveryWarnings(dataDir),lastBackup,stylePacks:stylePacks.list(),interaction:{...interactions.snapshot(),connection:bili.snapshot()},outfit:{combinations:combinations.list(),lastName:lastOutfit?.name||null,canUndo:canUndoOutfit()},ladder:ladder.snapshot(),automation:sc2.snapshot(),replays:watcher.snapshot(),keyboard:{status:keyboard.snapshot().status},serverNow:now()});
   const broadcast=()=>{revision++;if(!clients.size)return;const message=`data: ${JSON.stringify(snapshot())}\n\n`;for(const res of clients)res.write(message);};
   function persist(){if(!settings)return;storage.writeJSON(settings,config);}
   const sc2=createSc2Monitor({getConfig:()=>config,getScene:()=>({scene}),transition:target=>{scene=target;broadcast();},onUpdate:broadcast,onSample:ladder.observe,reader:sc2Reader,intervalMs:100,now,shouldPoll:()=>ladder.getConfig().enabled&&ladder.getConfig().autoTrack});
@@ -35,7 +36,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
   const bili=createBilibiliClient({...biliOptions,now,onRoom:roomId=>interactions.configure({roomId}),onEvent:event=>{interactions.ingest(event);queueLiveUpdate();},onUpdate:queueLiveUpdate});
   const liveTicker=setInterval(()=>{if(interactions.tick())broadcast();},1000);liveTicker.unref();
   let lastKeyboardStatus='disabled';const keyboard=createKeyboardInput({getConfig:()=>ladder.getConfig(),spawnWorker:keyboardSpawn,now,onUpdate:frame=>{for(const res of keyboardClients)res.write(`data: ${JSON.stringify(frame)}\n\n`);if(frame.status!==lastKeyboardStatus){lastKeyboardStatus=frame.status;broadcast();}}});
-  const routes={'/':'ladder.html','/assistant':'ladder.html','/assistant.js':'ladder-ui.js','/assistant.css':'assistant.css','/workspace.js':'workspace.js','/workspace.css':'workspace.css','/cat-workspace.js':'cat-workspace.js','/cat-keyboard':'cat-keyboard.html','/cat-keyboard-template.js':'cat-keyboard-template.js','/cat-keyboard.js':'cat-keyboard.js','/cat-keyboard.css':'cat-keyboard.css','/assets/cat-keyboard-v2.png':'assets/cat-keyboard-v2.png','/assets/cat-keyboard-rear-v1.png':'assets/cat-keyboard-rear-v1.png','/gameframe':'gameframe.html','/gameframe-template.js':'gameframe-template.js','/gameframe.js':'gameframe.js','/gameframe.css':'gameframe.css','/scoreboard':'scoreboard.html','/scoreboard.js':'scoreboard.js','/scoreboard.css':'scoreboard.css','/output':'ladder-output.html','/ladder-output.js':'ladder-output.js','/ladder-output.css':'ladder-output.css','/ladder-overlay.js':'ladder-overlay.js','/ladder-overlay.css':'ladder-overlay.css','/obs.js':'obs.js','/favicon.svg':'favicon.svg','/assets/cnzs-logo.png':'assets/cnzs-logo.png','/assets/bluegold-logo.png':'assets/bluegold-logo.png','/assets/nailong-meme-v1.png':'assets/nailong-meme-v1.png'};
+  const routes={'/app-updater.ps1':'../app-updater.ps1','/更新助手.cmd':'../更新助手.cmd','/goals-overlay.js':'goals-overlay.js','/goals-model.js':'goals-model.js','/studio-upgrade.js':'studio-upgrade.js','/studio-upgrade.css':'studio-upgrade.css','/preview-assets.js':'preview-assets.js','/preview-status.js':'preview-status.js','/assets/console-preview.jpg':'assets/console-preview.jpg','/':'ladder.html','/assistant':'ladder.html','/assistant.js':'ladder-ui.js','/assistant.css':'assistant.css','/workspace.js':'workspace.js','/workspace.css':'workspace.css','/cat-workspace.js':'cat-workspace.js','/cat-keyboard':'cat-keyboard.html','/cat-keyboard-template.js':'cat-keyboard-template.js','/cat-keyboard.js':'cat-keyboard.js','/cat-keyboard.css':'cat-keyboard.css','/assets/cat-keyboard-v2.png':'assets/cat-keyboard-v2.png','/assets/cat-keyboard-rear-v1.png':'assets/cat-keyboard-rear-v1.png','/gameframe':'gameframe.html','/gameframe-template.js':'gameframe-template.js','/gameframe.js':'gameframe.js','/gameframe.css':'gameframe.css','/scoreboard':'scoreboard.html','/scoreboard.js':'scoreboard.js','/scoreboard.css':'scoreboard.css','/output':'ladder-output.html','/ladder-output.js':'ladder-output.js','/ladder-output.css':'ladder-output.css','/ladder-overlay.js':'ladder-overlay.js','/ladder-overlay.css':'ladder-overlay.css','/obs.js':'obs.js','/favicon.svg':'favicon.svg','/assets/cnzs-logo.png':'assets/cnzs-logo.png','/assets/bluegold-logo.png':'assets/bluegold-logo.png','/assets/nailong-meme-v1.png':'assets/nailong-meme-v1.png'};
   for(const file of ['preview-connection.js','scene-themes.js','scene-themes.css','scene-workspace.js','scene-video.js','usage-ui.js','usage-ui.css','outfit-presets.js','outfit-workspace.js','outfit-workspace.css','live-workspace.js','live-workspace.css','live-overlay.js','live-overlay.css'])routes['/'+file]=file;
   for(const file of ['nahida-emote-v1.png','vesna-emote-v1.png','nahida-keys-v1.png','vesna-keys-v1.png','naiwa-keys-v1.png','nahida-frame-v1.png','starcraft-scene-v1.png'])routes['/assets/'+file]='assets/'+file;
   for(const f of ['nicole-frame-v1.png','nicole-keys-v1.png','nicole-waiting-v1.png','nicole-away-v1.png'])routes['/assets/'+f]='assets/'+f;
@@ -67,6 +68,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手导出'});
         const kind=url.searchParams.get('kind'),content=interactions.exportCSV(kind);res.writeHead(200,{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="Bilibili-'+(kind==='income'?'Income':'Winners')+'.csv"'});return res.end(content);
       }
+      if(req.method==='GET'&&url.pathname==='/output'&&!url.searchParams.has('preview'))lastOutputRequestAt=now();
       if(req.method==='GET'&&url.pathname==='/api/state')return json(200,snapshot());
       if(req.method==='GET'&&url.pathname==='/api/style-pack-export'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手导出'});
@@ -92,7 +94,7 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
       if(req.method==='GET'&&url.pathname==='/api/keyboard-events'){res.writeHead(200,{'Content-Type':'text/event-stream','Connection':'keep-alive'});keyboardClients.add(res);res.write(`retry: 1000\ndata: ${JSON.stringify(keyboard.snapshot())}\n\n`);req.on('close',()=>keyboardClients.delete(res));return;}
       if(req.method==='GET'&&/^\/waiting-backgrounds\/[a-f\d]{64}\.(png|jpg|webp)$/.test(url.pathname)){
         const file=dataDir&&path.join(dataDir,'backgrounds',path.basename(url.pathname));if(!file||!fs.existsSync(file))return json(404,{error:'背景图不存在'});
-        res.writeHead(200,{'Content-Type':{'.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp'}[path.extname(file)]});return res.end(fs.readFileSync(file));
+        res.writeHead(200,{'Content-Type':{'.png':'image/png','.jpg':'image/jpeg','.ps1':'text/plain; charset=utf-8','.cmd':'text/plain; charset=utf-8','.jpg':'image/jpeg','.webp':'image/webp'}[path.extname(file)]});return res.end(fs.readFileSync(file));
       }
       if(req.method==='POST'&&url.pathname==='/api/waiting-background'){
         if(req.headers['x-control-token']!==token||(req.headers.origin&&!hosts.some(h=>req.headers.origin===`http://${h}`)))return json(403,{error:'请从本地助手操作'});
@@ -122,8 +124,11 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
             check('游戏连接',!['offline','unknown'].includes(sc2.snapshot().phase),sc2.snapshot().label);
             check('录像核对',!watcher.snapshot().errors.length&&!ladder.snapshot().pending.length,`${ladder.snapshot().pending.length} 条待关联 · ${watcher.snapshot().errors.length} 条解析失败`);
             check('MMR',c.mmr!==null,ladder.snapshot().mmrMessage);
+            check('直播输出来源',!!lastOutputRequestAt,lastOutputRequestAt?'直播输出地址已被访问；请在直播软件中确认可见':'尚未检测到输出来源，请在直播姬或OBS添加浏览器来源');
             diagnostics={at:now(),checks};break;
           }
+          case'updateCheck':{const remote=await require('./update-info.cjs').check();return json(200,remote);}
+          case'updateLaunch':case'updateRollback':{if(process.platform!=='win32')throw Error('更新工具仅支持 Windows，请解压新包后运行');if(!fs.existsSync(path.join(__dirname,'app-updater.ps1')))throw Error('本机更新工具缺失，请从新标准包运行更新助手.cmd');const child=require('node:child_process').spawn('powershell.exe',['-NoProfile','-ExecutionPolicy','Bypass','-WindowStyle','Hidden','-File',path.join(__dirname,'app-updater.ps1'),'-TargetDirectory',__dirname,'-Interactive',...(i.action==='updateRollback'?['-Rollback']:[])],{windowsHide:true,detached:true,stdio:'ignore'});child.on('error',()=>{});child.unref();break;}
           case'identityDetect':return json(200,await discoverAccounts(ladder.getConfig(),{...accountOptions,includeNames:true,parser:accountOptions.parser||parser}));
           case'identityInspect':return json(200,await inspectAccount(ladder.getConfig(),i.replayDirectory,{...accountOptions,parser:accountOptions.parser||parser}));
           case'liveConnect':interactions.configure({roomId:i.roomId,mode:i.mode});await bili.connect({roomId:i.roomId,mode:i.mode,credentials:i.credentials});break;
@@ -159,8 +164,8 @@ function createAssistant({port=17864,dataDir=path.join(__dirname,'.ladder-data')
       }
       if(req.method!=='GET')return json(405,{error:'不支持此请求'});
       const file=routes[url.pathname];if(!file)return json(404,{error:'页面不存在'});
-      const ext=path.extname(file),types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8'};
-      if(ext==='.png')return artwork(req,res,path.join(__dirname,'public',file));
+      const ext=path.extname(file),types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.ps1':'text/plain; charset=utf-8','.cmd':'text/plain; charset=utf-8','.json':'application/json; charset=utf-8','.txt':'text/plain; charset=utf-8'};
+      if(ext==='.png'||ext==='.jpg')return artwork(req,res,path.join(__dirname,'public',file),ext==='.jpg'?'image/jpeg':'image/png');
       let content=fs.readFileSync(path.join(__dirname,'public',file));if(file==='ladder.html')content=Buffer.from(content.toString('utf8').replace('__CONTROL_TOKEN__',token));res.writeHead(200,{'Content-Type':types[ext]});res.end(content);
     }catch(error){json(400,{error:error.message});}
   });

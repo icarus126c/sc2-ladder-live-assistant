@@ -4,9 +4,12 @@
   const names={game:'游戏画面',loading:'比赛载入画面',intermission:'搜索 / 等待画面',break:'暂离画面',blank:'空白场景',custom:'自定义场景'};
   const descriptions={game:'保留游戏画面，搭配边框、计分器与小助手。',loading:'下一场开始前，展示标题与本次直播战报。',intermission:'搜索对手时，用背景、文字和战报填满等待时间。',break:'暂时离开时，告诉观众何时回来。',blank:'隐藏所有助手图层，露出直播软件下方的原始画面。',custom:'为节目、活动或自由组合准备一个独立场景。'};
   const content={ShowName:'昵称与种族',ShowMMR:'当前 MMR',ShowRecord:'本次直播胜负',ShowMatchups:'对阵种族',ShowPhase:'游戏状态',ShowHUD:'信息栏',ShowLongest:'今日最长对局',ShowZealots:'今日刷叉',ShowZerglings:'今日造狗',ShowWorkersKilled:'击杀对方农民',ShowStrongest:'今日最强对手',ShowDailyTime:'今日对局时长'};
-  const layerMeta={Frame:['边','装饰游戏边沿'],Keyboard:['键','展示按键与角色'],Scoreboard:['胜','本次直播的胜负'],DailyWidget:['今','今日对局与单位统计'],Resources:['矿','矿物、瓦斯与人口图标'],Gifts:['礼','直播间礼物答谢'],Income:['收','直播间收益信息'],Raffle:['奖','直播间抽奖进度'],Sticker:['贴','自由摆放的图片挂件']};
-  const dragTargets={Keyboard:'keyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Text:'text',Sticker:'sticker'};
+  const layerMeta={Goals:['标','今日挑战与进度'],Frame:['边','装饰游戏边沿'],Keyboard:['键','展示按键与角色'],Scoreboard:['胜','本次直播的胜负'],DailyWidget:['今','今日对局与单位统计'],Resources:['矿','矿物、瓦斯与人口图标'],Gifts:['礼','直播间礼物答谢'],Income:['收','直播间收益信息'],Raffle:['奖','直播间抽奖进度'],Sticker:['贴','自由摆放的图片挂件']};
+  const dragTargets={Goals:'goals',Keyboard:'keyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Text:'text',Sticker:'sticker'};
   let state,connected=false,phase='game',draft={},dirty=false,uploading=false,saving=false,lastConfig='',selected='Scoreboard',pendingScene='',controls=[],cards=[],buttons=[],visibilityNote=null;
+  let undoStack=[],redoStack=[],moveGesture='';
+  function remember(){undoStack.push({...draft});if(undoStack.length>80)undoStack.shift();redoStack=[];}
+  function history(back){if(busy())return;const from=back?undoStack:redoStack,to=back?redoStack:undoStack;if(!from.length)return;to.push({...draft});draft=from.pop();dirty=Object.keys(draft).length>0;moveGesture='';build();}
   const values=()=>({...state?.ladder.config,...draft});
   const busy=()=>uploading||saving;
   function field(key){return controls.find(el=>el.dataset.sceneField===key);}
@@ -32,7 +35,7 @@
   function checks(parent,items){const row=node('div',null,'scene-editor-checks');for(const [key,label]of items)row.append(input(key,label,'checkbox'));parent.append(row);}
   function hint(parent,text){parent.append(node('p',text,'hint'));}
   function button(text,action,className){const el=node('button',text,className);el.type='button';el.disabled=!state||busy();el.addEventListener('click',()=>{if(!busy())action();});buttons.push(el);return el;}
-  function setValue(key,value){draft[key]=value;dirty=true;}
+  function setValue(key,value){if(values()[key]===value&&!key.endsWith('Theme'))return;remember();moveGesture='';draft[key]=value;dirty=true;}
   function chooseLayer(layer){selected=layer;build();$('sceneComponentInspector')?.scrollIntoView?.({block:'nearest',behavior:'smooth'});}
   function contentCard(layer,label){
     const key=M.prefixes[phase]+'Show'+layer,meta=layerMeta[layer]||['文','场景标题与战报'];
@@ -83,6 +86,7 @@
       const more=section('更多文字与战报',true);for(const [key,label]of [['Kicker','顶部小字'],['TeamName','战队名称']])more.append(input(prefix+key,label));checks(more,Object.entries(content).map(([key,label])=>[prefix+key,label]));panel.append(more);
       const layout=section('文字对齐、字号与位置',true);layout.append(input(prefix+'Layout','对齐方式','text',{left:'左侧',center:'居中',right:'右侧'}));checks(layout,[[prefix+'FreePosition','使用自由位置（可拖动）']]);pair(layout,[[prefix+'TextX','横向位置','number'],[prefix+'TextY','纵向位置','number'],[prefix+'Width','内容宽度','number'],[prefix+'TitleSize','标题字号','number']]);panel.append(layout);
     }else if(selected==='Scoreboard')pair(panel,[['scoreboardX','横向位置','number'],['scoreboardY','纵向位置','number'],['scoreboardWidth','宽度','number'],['scoreboardPanelOpacity','底色与边框 %','number'],['scoreboardOpacity','整体透明度 %','number']]);
+    else if(selected==='Goals')pair(panel,[['goalsX','横向位置','number'],['goalsY','纵向位置','number'],['goalsWidth','宽度','number'],['goalsOpacity','底色不透明度 %','number']]);
     else if(selected==='DailyWidget')pair(panel,[['dailyX','横向位置','number'],['dailyY','纵向位置','number'],['dailyWidth','宽度','number'],['dailyOpacity','底色透明度 %','number']]);
     else if(selected==='Keyboard'){
       panel.append(input('catView','显示风格','text',{flat:'纯平面键盘 · 无角色',rear:'侧后方角色',split:'角色与键盘分开',classic:'保留的原版'}));panel.append(input('catKeyboardSide','键盘显示','text',{left:'左半键盘',right:'右半键盘'}));pair(panel,[['catX','横向位置','number'],['catY','纵向位置','number'],['catWidth','宽度','number'],['catOpacity','整体透明度 %','number'],['catAccent','按键高亮','color']]);
@@ -96,13 +100,15 @@
       if(values().stickerImage)options.custom='自己的图片';panel.append(input('stickerStyle','挂件角色','text',options));
       pair(panel,[['stickerX','横向位置','number'],['stickerY','纵向位置','number'],['stickerWidth','宽度','number'],['stickerHeight','高度','number'],['stickerOpacity','整体透明度 %','number']]);checks(panel,[['stickerFlip','水平翻转'],['stickerProtect','避让游戏信息区']]);hint(panel,'游戏中自动避开小地图、血量、技能和资源数字，让关键信息保持清晰。');hint(panel,'上传自己的图片，请打开下方完整设置。');
     }else hint(panel,'在直播间互动中配置内容、连接状态与触发方式。');
-    const routes={Frame:'gameframe',Keyboard:'catkeyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Resources:'resources',Gifts:'liveinteraction',Income:'liveinteraction',Raffle:'liveinteraction',Sticker:'stickers'};
+    const routes={Goals:'goals',Frame:'gameframe',Keyboard:'catkeyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Resources:'resources',Gifts:'liveinteraction',Income:'liveinteraction',Raffle:'liveinteraction',Sticker:'stickers'};
     if(routes[selected]){const link=node('a','打开完整设置 ↗','quiet-link');link.href='#'+routes[selected];panel.append(link);}box.append(panel);
   }
   function sync(){
     const locked=!state||busy();for(const el of [...controls,...buttons])el.disabled=locked;
     for(const {card,control,labelNode}of cards){card.dataset.visible=String(control.checked);labelNode.textContent=control.checked?(['Gifts','Income','Raffle'].includes(card.dataset.layer)?'允许显示':'已显示'):'已隐藏';}
     for(const b of document.querySelectorAll('[data-edit-scene]'))b.disabled=locked;
+    $('sceneEditUndo').disabled=locked||!undoStack.length;$('sceneEditRedo').disabled=locked||!redoStack.length;
+    for(const b of document.querySelectorAll('[data-editor-align]'))if(b.dataset.editorAlign)b.disabled=locked||!dragTargets[selected];
     if(!state)return;
     const c=values(),prefix=M.prefixes[phase];
     if(visibilityNote)visibilityNote.hidden=isVisible(prefix+'Show'+selected,c);
@@ -120,7 +126,7 @@
     if($('sceneEditorMediaFile'))$('sceneEditorMediaFile').disabled=!connected||locked;
   }
   function changed(event){
-    const el=event.target,key=el.dataset.sceneField;if(!key||busy())return;setValue(key,el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value);const prefix=M.prefixes[phase];
+    const el=event.target,key=el.dataset.sceneField;if(!key||busy())return;const value=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;const requiresTool=el.type==='checkbox'&&el.checked&&!isVisible(key);if(requiresTool&&values()[key]===value){remember();moveGesture='';draft[key]=value;dirty=true;}else setValue(key,value);const prefix=M.prefixes[phase];
     for(const [layer,global]of Object.entries(M.enableFields))if(key===prefix+'Show'+layer&&el.checked)draft[global]=true;
     if(key===prefix+'ShowDailyWidget'&&el.checked){const flag={game:'dailyGame',intermission:'dailyWaiting',break:'dailyBreak'}[phase];if(flag)draft[flag]=true;}
     if(key===prefix+'ShowHUD'&&el.checked)draft.showHUD=true;
@@ -133,25 +139,29 @@
   }
   async function save(){
     if(busy()||!connected||!dirty||phase==='blank')return false;
-    try{const c=values(),prefix=M.prefixes[phase];if(phase!=='game'&&((c[prefix+'Background']==='image'&&!c[prefix+'BackgroundImage'])||(c[prefix+'Background']==='video'&&!c[prefix+'BackgroundVideo'])))throw Error('请先上传对应的图片或视频');saving=true;sync();state=await window.AssistantActions.act('ladderConfigure',{config:M.filter(draft,phase)});draft={};dirty=false;lastConfig=JSON.stringify(state.ladder.config);window.AssistantActions.toast(names[phase]+'设置已保存');return true;}catch(error){window.AssistantActions.toast(error.message);return false;}finally{saving=false;build();}
+    try{const c=values(),prefix=M.prefixes[phase];if(phase!=='game'&&((c[prefix+'Background']==='image'&&!c[prefix+'BackgroundImage'])||(c[prefix+'Background']==='video'&&!c[prefix+'BackgroundVideo'])))throw Error('请先上传对应的图片或视频');saving=true;sync();state=await window.AssistantActions.act('ladderConfigure',{config:M.filter(draft,phase)});draft={};dirty=false;undoStack=[];redoStack=[];lastConfig=JSON.stringify(state.ladder.config);window.AssistantActions.toast(names[phase]+'设置已保存');return true;}catch(error){window.AssistantActions.toast(error.message);return false;}finally{saving=false;build();}
   }
   function selectScene(next){
     if(busy()){window.AssistantActions.toast('请等待当前保存完成');return false;}if(!M.phases.includes(next))return false;if(next===phase)return true;
-    if(dirty){pendingScene=next;sync();return false;}phase=next;pendingScene='';selected=phase==='game'?'Scoreboard':'Text';backgroundSection=null;$('sceneEditorMediaStatus').textContent='';frame.dataset.src='/output?preview=1&module=editor&phase='+phase;build();return true;
+    if(dirty){pendingScene=next;sync();return false;}phase=next;pendingScene='';undoStack=[];redoStack=[];selected=phase==='game'?'Scoreboard':'Text';backgroundSection=null;$('sceneEditorMediaStatus').textContent='';frame.dataset.src='/output?preview=1&module=editor&phase='+phase;build();return true;
   }
   $('sceneEditorForm').addEventListener('input',changed);$('sceneEditorForm').addEventListener('change',changed);
   $('sceneEditorForm').addEventListener('submit',async event=>{event.preventDefault();const next=pendingScene;if(await save()&&next)selectScene(next);});
-  $('sceneEditorDiscard').addEventListener('click',()=>{if(busy())return;draft={};dirty=false;pendingScene='';$('sceneEditorMediaStatus').textContent='';build();});
+  $('sceneEditorDiscard').addEventListener('click',()=>{if(busy())return;draft={};dirty=false;pendingScene='';undoStack=[];redoStack=[];$('sceneEditorMediaStatus').textContent='';build();});
   $('sceneSwitchSave').addEventListener('click',async()=>{const next=pendingScene;if(await save())selectScene(next);});
-  $('sceneSwitchDiscard').addEventListener('click',()=>{if(busy())return;const next=pendingScene;draft={};dirty=false;selectScene(next);});$('sceneSwitchCancel').addEventListener('click',()=>{pendingScene='';sync();});
+  $('sceneSwitchDiscard').addEventListener('click',()=>{if(busy())return;const next=pendingScene;draft={};dirty=false;undoStack=[];redoStack=[];selectScene(next);});$('sceneSwitchCancel').addEventListener('click',()=>{pendingScene='';sync();});
   for(const b of document.querySelectorAll('[data-edit-scene]'))b.addEventListener('click',()=>selectScene(b.dataset.editScene));
   for(const link of document.querySelectorAll('[data-open-editor-scene]'))if(link.dataset.openEditorScene)link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();selectScene(link.dataset.openEditorScene);location.hash='#scenes';});
   $('sceneDragTarget').addEventListener('change',()=>{const target=$('sceneDragTarget').value,layer=Object.keys(dragTargets).find(key=>dragTargets[key]===target);if(layer&&!(layer==='Text'&&phase==='game'))chooseLayer(layer);else sync();});frame.addEventListener('load',sync);$('sceneEditorGuides')?.addEventListener('change',sync);
   addEventListener('message',event=>{
-    if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='editorMoved'||busy())return;const patch=M.filter(event.data.config,phase);let moved=false;
-    for(const [key,value]of Object.entries(patch)){if(!/^(?:cat[XY]|scoreboard[XY]|daily[XY]|sticker[XY]|(?:waiting|break|loading|custom)(?:Text[XY]|FreePosition))$/.test(key))continue;draft[key]=value;moved=true;if(field(key)){if(field(key).type==='checkbox')field(key).checked=value;else field(key).value=value;}}
-    if(moved){dirty=true;sync();}
+    if(event.origin!==location.origin||event.source!==frame.contentWindow||busy())return;
+    if(event.data?.type==='editorSelected'){const layer=Object.keys(dragTargets).find(k=>dragTargets[k]===event.data.target);if(layer&&!(layer==='Text'&&phase==='game'))chooseLayer(layer);return;}
+    if(event.data?.type!=='editorMoved')return;const patch=M.filter(event.data.config,phase);let moved=false;const gesture=typeof event.data.gesture==='string'?event.data.gesture.slice(0,64):'';
+    for(const [key,value]of Object.entries(patch)){if(!/^(?:cat[XY]|scoreboard[XY]|daily[XY]|goals[XY]|sticker[XY]|catWidth|scoreboardWidth|dailyWidth|goalsWidth|stickerWidth|stickerHeight|(?:waiting|break|loading|custom)(?:Text[XY]|FreePosition))$/.test(key))continue;if(values()[key]===value)continue;if(!moved&&(!gesture||gesture!==moveGesture))remember();draft[key]=value;moved=true;if(field(key)){if(field(key).type==='checkbox')field(key).checked=value;else field(key).value=value;}}
+    if(moved){dirty=true;moveGesture=gesture;sync();}
   });
+  $('sceneEditUndo').addEventListener('click',()=>history(true));$('sceneEditRedo').addEventListener('click',()=>history(false));
+  for(const b of document.querySelectorAll('[data-editor-align]'))if(b.dataset.editorAlign)b.addEventListener('click',()=>{if(!busy())frame.contentWindow?.postMessage({type:'editorAlign',axis:b.dataset.editorAlign},location.origin);});
   addEventListener('beforeunload',event=>{if(!dirty)return;event.preventDefault();event.returnValue='';});
   window.SceneEditor={render(next){state=next;const serialized=JSON.stringify(next.ladder.config);if(serialized!==lastConfig&&!dirty&&!busy()){lastConfig=serialized;build();}else sync();},connection(value){connected=value;sync();}};
 })();

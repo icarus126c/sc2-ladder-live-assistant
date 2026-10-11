@@ -17,7 +17,7 @@ $taskStageRoot=Join-Path $taskSource ('work/package/'+[guid]::NewGuid().ToString
 $taskStage=Join-Path $taskStageRoot ('星际2天梯直播助手-'+$taskVersion)
 New-Item -ItemType Directory -Force -Path $taskStage,$taskOutput | Out-Null
 foreach($taskFile in Get-ChildItem -LiteralPath $taskSource -File){
-  if($taskFile.Extension -in @('.cjs','.py','.cmd') -or $taskFile.Name -in @('package.json','requirements.txt','LICENSE','README.md','ASSET-NOTICE.md','THIRD-PARTY-NOTICES.md','CHANGELOG.md','SPONSOR.md')){
+  if($taskFile.Extension -in @('.cjs','.py','.cmd','.ps1') -or $taskFile.Name -in @('package.json','requirements.txt','LICENSE','README.md','ASSET-NOTICE.md','THIRD-PARTY-NOTICES.md','CHANGELOG.md','SPONSOR.md')){
     Copy-Item -LiteralPath $taskFile.FullName -Destination $taskStage
   }
 }
@@ -41,6 +41,9 @@ foreach($taskCache in (Get-ChildItem -LiteralPath $taskStage -Directory -Filter 
   if(-not [IO.Path]::GetFullPath($taskCache.FullName).StartsWith($taskStageResolved+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Cache outside staging root'}
   Remove-Item -LiteralPath $taskCache.FullName -Recurse -Force
 }
+$taskEntries=@(Get-ChildItem -LiteralPath $taskStage -File -Recurse | ForEach-Object { @{path=$_.FullName.Substring($taskStage.Length+1).Replace('\','/');sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash} })
+$taskManifest=@{schema=1;app='starcraft-ladder-live-assistant';version=$taskVersion;files=$taskEntries}|ConvertTo-Json -Depth 5
+[IO.File]::WriteAllText((Join-Path $taskStage 'update-manifest.json'),$taskManifest,[Text.UTF8Encoding]::new($false))
 $taskZip=Join-Path $taskOutput ('星际2天梯直播助手-'+$taskVersion+'-标准版-'+$ReleaseDate+'-Windows-x64.zip')
 if(Test-Path -LiteralPath $taskZip){throw "Output already exists: $taskZip"}
 Add-Type -AssemblyName System.IO.Compression.FileSystem

@@ -65,8 +65,18 @@ test('Only same-origin preview movement creates a layout draft; unrelated payloa
   assert.equal(e.preview().config.scoreboardX, 999); assert.equal(e.get('sceneEditorApply').disabled, false);
 });
 
+test('one drag is one undo step; redo restores it, a new edit clears redo, and preview selection chooses its inspector',()=>{
+ const e=editor(),source=e.get('sceneEditorPreview').contentWindow,send=data=>e.events.message({source,origin:'http://localhost',data});
+ const initial=e.preview().config.scoreboardX;
+ send({type:'editorMoved',gesture:'one',config:{scoreboardX:600}});send({type:'editorMoved',gesture:'one',config:{scoreboardX:700,scoreboardWidth:620}});
+ e.click('sceneEditUndo');assert.equal(e.preview().config.scoreboardX,initial);assert.equal(e.get('sceneEditorApply').disabled,true);
+ e.click('sceneEditRedo');assert.equal(e.preview().config.scoreboardX,700);assert.equal(e.preview().config.scoreboardWidth,620);
+ send({type:'editorSelected',target:'goals'});assert.equal(e.get('sceneDragTarget').value,'goals');assert.ok(e.get('sceneEdit-goalsX'));
+ e.click('sceneEditUndo');send({type:'editorMoved',gesture:'two',config:{goalsX:70,goalsWidth:500}});assert.equal(e.get('sceneEditRedo').disabled,true);assert.equal(e.preview().config.goalsWidth,500);
+});
+
 test('Preview keyboard movement honors scale, bounds, hidden elements and origin', () => {
-  const events = {}, handlers = {}, messages = [], parent = {postMessage(message) {messages.push(message);}}, handle = {style: {}, setAttribute() {}, addEventListener(type, fn) {handlers[type] = fn;}};
+  const events = {}, handlers = {}, messages = [], parent = {postMessage(message) {messages.push(message);}}, handle = {style: {}, append() {}, setAttribute() {}, addEventListener(type, fn) {handlers[type] = fn;}};
   const widget = {hidden: false, closest() {return null;}, getBoundingClientRect() {return {left: 500, top: 80, width: 100, height: 60};}};
   const state = {scene: 'game', ladder: {config: {scoreboardX: 1698, scoreboardY: 0}}};
   vm.runInNewContext(fs.readFileSync(require.resolve('../public/scene-editor-preview.js'), 'utf8'), {URLSearchParams, location: {search: '?preview=1&module=editor', origin: 'http://localhost'}, window: {SceneCustomization: M, SceneEditorPreviewState: state}, parent, document: {createElement() {return handle;}, body: {append() {}}, getElementById(id) {return id === 'canvas' ? {getBoundingClientRect() {return {left: 0, top: 0, width: 960};}} : widget;}}, addEventListener(type, fn) {events[type] = fn;}, setInterval() {}});
@@ -78,4 +88,12 @@ test('Preview keyboard movement honors scale, bounds, hidden elements and origin
   widget.hidden = false; state.scene = 'loading'; state.ladder.config.loadingFreePosition = false;
   events.message({source: parent, origin: 'http://localhost', data: {type: 'editorDragTarget', target: 'text'}});
   handlers.keydown({key: 'ArrowDown', preventDefault() {}}); assert.equal(messages.at(-1).config.loadingTextX, 1000); assert.equal(messages.at(-1).config.loadingTextY, 161); assert.equal(messages.at(-1).config.loadingFreePosition, true);
+});
+
+test('preview resize honors canvas and widget scale, clamps width and alignment remains a position-only edit',()=>{
+ const events={},messages=[],parent={postMessage:m=>messages.push(m)},nodes=[];
+ const make=()=>{const n={style:{},handlers:{},children:[],append(child){this.children.push(child);},setAttribute(){},addEventListener(k,f){this.handlers[k]=f;},setPointerCapture(){},focus(){}};nodes.push(n);return n;};
+ const widget={hidden:false,closest:()=>null,getBoundingClientRect:()=>({left:350,top:80,width:420,height:60})},state={scene:'game',ladder:{config:{scoreboardX:700,scoreboardY:160,scoreboardWidth:560}}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/scene-editor-preview.js'),'utf8'),{URLSearchParams,location:{search:'?preview=1&module=editor',origin:'http://localhost'},window:{SceneCustomization:M,SceneEditorPreviewState:state},parent,document:{createElement:make,body:{append(){}},getElementById:id=>id==='canvas'?{getBoundingClientRect:()=>({left:0,top:0,width:960})}:widget},addEventListener:(k,f)=>events[k]=f,setInterval(){}});
+ events.message({origin:'http://localhost',source:parent,data:{type:'editorDragTarget',target:'scoreboard'}});const handle=nodes[0],grip=nodes[1];handle.handlers.pointerdown({button:0,target:grip,clientX:100,clientY:100,pointerId:1,preventDefault(){}});handle.handlers.pointermove({clientX:115,clientY:100});assert.equal(messages.at(-1).config.scoreboardWidth,580);const gesture=messages.at(-1).gesture;handle.handlers.pointermove({clientX:10000,clientY:100});assert.equal(messages.at(-1).config.scoreboardWidth,1000);assert.equal(messages.at(-1).gesture,gesture);handle.handlers.pointerup();events.message({origin:'http://localhost',source:parent,data:{type:'editorAlign',axis:'center'}});assert.equal(messages.at(-1).config.scoreboardX,540);assert.equal('scoreboardWidth' in messages.at(-1).config,false);
 });

@@ -4,7 +4,7 @@
   const source=location.pathname==='/custom-screen'?'custom':location.pathname==='/waiting-screen'?'intermission':location.pathname==='/away-screen'?'break':location.pathname==='/loading-screen'?'loading':null;
   let saved,draft={},outfitChoice=null,outfitPhase='game',outfitReveal=true,dailySample=false,dailyPhase='intermission',scenePreviewPhase=phase;
   if(preview)document.body.classList.add('preview');
-  let guide,showGuides=false,reference;if(preview&&['editor','sticker'].includes(params.get('module'))){reference=document.createElement('img');reference.src='/assets/console-game-reference.png';reference.alt='游戏参考画面，仅在预览显示';Object.assign(reference.style,{position:'absolute',inset:'0',width:'1920px',height:'1080px',pointerEvents:'none',zIndex:'0'});document.getElementById('canvas').insertBefore(reference,document.getElementById('canvas').firstChild);guide=document.createElement('div');guide.hidden=true;guide.setAttribute?.('aria-label','游戏重要信息区，仅用于预览');Object.assign(guide.style,{position:'absolute',inset:'0',pointerEvents:'none',zIndex:'80'});guide.innerHTML='<svg viewBox="0 0 1920 1080" width="1920" height="1080">'+window.LuxuryConsole.protectedAreas.map(a=>'<rect x="'+a.x+'" y="'+a.y+'" width="'+a.w+'" height="'+a.h+'" fill="#4ad884" fill-opacity=".09" stroke="#51e899" stroke-width="2"/>').join('')+'</svg>';document.getElementById('canvas').insertBefore(guide,null);}
+  let guide,showGuides=false,reference;if(preview&&['editor','sticker'].includes(params.get('module'))){reference=document.createElement('img');reference.src='/assets/console-preview.jpg';reference.alt='游戏参考画面，仅在预览显示';Object.assign(reference.style,{position:'absolute',inset:'0',width:'1920px',height:'1080px',pointerEvents:'none',zIndex:'0'});document.getElementById('canvas').insertBefore(reference,document.getElementById('canvas').firstChild);guide=document.createElement('div');guide.hidden=true;guide.setAttribute?.('aria-label','游戏重要信息区，仅用于预览');Object.assign(guide.style,{position:'absolute',inset:'0',pointerEvents:'none',zIndex:'80'});guide.innerHTML='<svg viewBox="0 0 1920 1080" width="1920" height="1080">'+window.LuxuryConsole.protectedAreas.map(a=>'<rect x="'+a.x+'" y="'+a.y+'" width="'+a.w+'" height="'+a.h+'" fill="#4ad884" fill-opacity=".09" stroke="#51e899" stroke-width="2"/>').join('')+'</svg>';document.getElementById('canvas').insertBefore(guide,null);}
   function resize(){const scale=Math.min(innerWidth/1920,innerHeight/1080),canvas=document.getElementById('canvas');canvas.style.transform=`scale(${scale})`;if(preview){canvas.style.left=(innerWidth-1920*scale)/2+'px';canvas.style.top=(innerHeight-1080*scale)/2+'px';}}
   resize();addEventListener('resize',resize);
   function render(){
@@ -21,7 +21,7 @@
     if(preview&&['editor','sticker'].includes(params.get('module')))window.SceneEditorPreviewState=state;
     if(guide)guide.hidden=!showGuides||state.scene!=='game';
     if(reference){reference.hidden=state.scene!=='game';document.getElementById('previewGround').style.display=state.scene==='game'?'none':'';}
-    window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
+    window.GoalsOverlay?.render(state);window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
     window.StickerOverlay?.render(state);window.ResourceOverlay?.render(state);window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,preview&&!livePreview?{preview:true,respectVisibility:true}:{});
     if(outfit)document.getElementById('catWidget').hidden=state.scene!=='game'||!state.ladder.config.catEnabled;
     if(preview&&params.get('module')==='overlay'){document.getElementById('scoreboardWidget').hidden=true;document.getElementById('ladderWaiting').hidden=true;}
@@ -32,8 +32,9 @@
     document.getElementById('breakScreen').hidden=true;
     if(preview&&params.get('module')&&!['outfit','scene','editor'].includes(params.get('module')))document.getElementById('resourceWidget').hidden=true;
     if((preview&&params.get('module')&&!['editor','sticker','scene'].includes(params.get('module'))))document.getElementById('stickerWidget').hidden=true;
-    if(standaloneSticker)for(const id of ['resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
-    if(state.scene==='blank')for(const id of ['stickerWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
+    if(preview&&params.get('module')&&!['waiting','loading','break','scene','editor'].includes(params.get('module')))document.getElementById('goalsWidget').hidden=true;
+    if(standaloneSticker)for(const id of ['goalsWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
+    if(state.scene==='blank')for(const id of ['goalsWidget','stickerWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
   }
   if(preview&&['waiting','loading','break'].includes(params.get('module')))addEventListener('message',event=>{
     if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='waitingDraft')return;

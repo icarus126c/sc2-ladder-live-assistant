@@ -11,5 +11,6 @@
   "engines": {
     "node": ">=24"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "build": "20261011-goals"
 }

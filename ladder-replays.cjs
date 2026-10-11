@@ -5,7 +5,8 @@ const daily=require('./daily-stats.cjs');
 const resources=require('./public/resource-template.js');
 const stickers=require('./public/sticker-template.js');
 const storage=require('./data-storage.cjs');
-const defaults={...appearance,...sceneDefaults,...daily.defaults,...resources.defaults,...stickers.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
+const goals=require('./public/goals-model.js'),accounting=require('./accounting.cjs');
+const defaults={...goals.defaults,...appearance,...sceneDefaults,...daily.defaults,...resources.defaults,...stickers.defaults,enabled:true,includeAI:false,replayDirectory:'',toonHandle:'',mmrMode:'replay',mmrSource:'unknown',mmrAt:null,
   scoreboardEnabled:true,scoreboardTemplate:'compact',scoreboardAccent:'',scoreboardX:1328,scoreboardY:120,scoreboardWidth:560,scoreboardScale:100,scoreboardOpacity:100,scoreboardPanelOpacity:96,scoreboardDetails:true,
   waitingBackground:'gradient',waitingBackgroundImage:'',waitingColor:'#08121f',waitingColorSecondary:'#285476',waitingAccent:'#e6bc5c',waitingTextColor:'#f0f5fb',
   waitingLayout:'center',waitingImageFit:'cover',waitingDim:35,waitingPanelOpacity:35,waitingWidth:1320,waitingTitleSize:66,waitingKicker:'TEAM AENEAS / LADDER SESSION',
@@ -42,7 +43,7 @@ function sanitize(input,base=defaults){
   if('catAccent'in input){if(typeof input.catAccent!=='string'||!/^#[a-f\d]{6}$/i.test(input.catAccent))throw Error('按键亮起颜色不正确');c.catAccent=input.catAccent;}
   if('catView'in input){if(!['split','classic','rear','flat'].includes(input.catView))throw Error('猫娘助手视角不正确');c.catView=input.catView;}
   if('catKeyboardSide'in input){if(!['left','right'].includes(input.catKeyboardSide))throw Error('请选择键盘左半或右半');c.catKeyboardSide=input.catKeyboardSide;}
-  return c;
+  return goals.sanitize(input,c);
 }
 function createReplayStore(file=null,now=Date.now){
   let session={id:crypto.randomUUID(),startedAt:now(),endedAt:null,excludedIds:[]},previousSession=null,lastPersistAt=-Infinity,dirty=false;
@@ -87,7 +88,7 @@ function createReplayStore(file=null,now=Date.now){
     const sessionRecords=records.filter(r=>r.identity===identity()&&r.at>=session.startedAt&&(session.endedAt===null||r.at<=session.endedAt)&&!session.excludedIds.includes(r.id)).sort((a,b)=>a.at-b.at);
     const sessionView={id:session.id,startedAt:session.startedAt,endedAt:session.endedAt,running:session.endedAt===null,resumeAvailable:!!previousSession,previousStartedAt:previousSession?.startedAt||null,stats:countStats(sessionRecords.filter(countedRecord)),records:sessionRecords.slice(-200).reverse()};
     const history=records.filter(r=>r.identity===identity()).sort((a,b)=>b.at-a.at);
-    const key=baseline();return{session:sessionView,history:history.slice(0,500),historyTotal:history.length,config:{...config,names:[...config.names]},date:dayKey(now()),status,mmrMessage,stats:{daily:daily.summarize(counted),longestMatch,wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',delta:config.mmr!==null&&Number.isInteger(baselines[key])?config.mmr-baselines[key]:null,matchups},records:today.slice(-200).reverse(),pending:Object.values(pending).filter(p=>p.identity===identity()),active};
+    const key=baseline();return{goals:goals.summarize(counted,config.goals),accounting:accounting.explain(records,{identity:identity(),session,includeAI:config.includeAI,now:now()}),session:sessionView,history:history.slice(0,500),historyTotal:history.length,config:{...config,names:[...config.names]},date:dayKey(now()),status,mmrMessage,stats:{daily:daily.summarize(counted),longestMatch,wins,losses,total:counted.length,winrate:counted.length?Math.round(wins/counted.length*100):null,streak:last?`${streak}连${last==='win'?'胜':'败'}`:'尚未开始',delta:config.mmr!==null&&Number.isInteger(baselines[key])?config.mmr-baselines[key]:null,matchups},records:today.slice(-200).reverse(),pending:Object.values(pending).filter(p=>p.identity===identity()),active};
   }
   function configure(input){const before=identity(),previous=Object.fromEntries(['mmr','mmrAt','mmrSource','mmrUpdatedAt'].map(k=>[k,config[k]]));config=sanitize(input,config);if(identity()!==before){accounts[before]=previous;active=null;Object.assign(config,accounts[identity()]||{mmr:null,mmrAt:null,mmrSource:'unknown',mmrUpdatedAt:null});mmrMessage=config.mmr===null?'游戏身份已改变，请重新扫描或填写 MMR':'已恢复此账号保存的 MMR';}persist();return snapshot();}
   function updateMMR(value){if(value!==null&&!validMMR(value))throw Error('MMR请填1～20000整数或留空');baseline();config.mmr=value;config.mmrSource=value===null?'unknown':'manual';config.mmrUpdatedAt=value===null?null:now();config.mmrAt=value===null?null:now();baseline();mmrMessage=value===null?'MMR已清空':'手动修正 MMR';persist();return snapshot();}
@@ -134,6 +135,7 @@ function createReplayStore(file=null,now=Date.now){
     if(seen[key]||seen[hashKey]){
       const previous=records.find(r=>r.id===(seen[key]||seen[hashKey])&&r.identity===identity());let changed=previous?daily.enrich(previous,p,metricsOpponent):false;
       if(previous){
+        if(op.toonHandle&&previous.opponentHandle!==op.toonHandle){previous.opponentHandle=op.toonHandle;changed=true;}
         // Re-reading a replay repairs old Random race labels without adding a result.
         for(const [field,value]of [['opponentRace',race(op.race)],['race',race(me.race)]])if(['T','P','Z'].includes(value)&&previous[field]!==value){previous[field]=value;changed=true;}
         if((!Number.isFinite(previous.durationSeconds)||previous.durationSeconds<=0)&&Number.isFinite(p.durationSeconds)&&p.durationSeconds>0){previous.durationSeconds=p.durationSeconds;changed=true;}
@@ -148,7 +150,7 @@ function createReplayStore(file=null,now=Date.now){
     if(!r&&!newRecord&&candidates.length===1)r=candidates[0];
     if(!r&&!newRecord&&candidates.length>1){pending[key]={key,hash,parsed:p,identity:identity(),candidates:candidates.map(r=>r.id)};status='录像可能对应多条手动补记，请在待核对区关联原记录';persist();return{kind:'pending',message:status};}
     if(!r){r={id:crypto.randomUUID(),at:p.at,result,identity:identity(),source:'replay',excluded:false};records.push(r);}
-    Object.assign(r,{at:p.at,replayKey:key,replayHash:hash,map:p.map,opponent:op.name,opponentRace:race(op.race),race:race(me.race),matchType:isAI?'ai1v1':'human1v1',replayAt:p.at,replayResult:result,durationSeconds:Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.durationSeconds:null});
+    Object.assign(r,{at:p.at,replayKey:key,replayHash:hash,map:p.map,opponent:op.name,opponentHandle:op.toonHandle||'',opponentRace:race(op.race),race:race(me.race),matchType:isAI?'ai1v1':'human1v1',replayAt:p.at,replayResult:result,durationSeconds:Number.isFinite(p.durationSeconds)&&p.durationSeconds>0?p.durationSeconds:null});
     daily.enrich(r,p,metricsOpponent);if(!r.excluded&&!isAI)updateFromReplay(p,r.result);seen[key]=r.id;seen[hashKey]=r.id;delete pending[key];status=`已${r.source==='manual'?'关联手动记录':'读取一'+(result==='win'?'胜':'负')} · ${op.name}${isAI?' · 人机1v1':''}`;persist();return{kind:'recorded',message:status};
   }
   function resolve(key,recordId,newRecord){const p=pending[key];if(!p)throw Error('待核对录像不存在');return acceptReplay(p.parsed,p.hash,{recordId,newRecord});}
