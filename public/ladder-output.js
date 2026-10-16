@@ -21,7 +21,7 @@
     if(preview&&['editor','sticker'].includes(params.get('module')))window.SceneEditorPreviewState=state;
     if(guide)guide.hidden=!showGuides||state.scene!=='game';
     if(reference){reference.hidden=state.scene!=='game';document.getElementById('previewGround').style.display=state.scene==='game'?'none':'';}
-    window.GoalsOverlay?.render(state,{reveal:preview&&params.get('module')==='goals',sample:goalSample});window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
+    window.WaitingTimerOverlay?.render(state,{preview:preview&&!livePreview,actualScene:saved.scene});window.GoalsOverlay?.render(state,{reveal:preview&&params.get('module')==='goals',sample:goalSample});window.LadderOverlay.render(state);window.ScoreboardOverlay.render(state);
     window.StickerOverlay?.render(state);window.ResourceOverlay?.render(state);window.GameFrameOverlay?.render(state);window.CatKeyboardOverlay?.render(state,preview&&!livePreview?{preview:true,respectVisibility:true}:{});
     if(outfit)document.getElementById('catWidget').hidden=state.scene!=='game'||!state.ladder.config.catEnabled;
     if(preview&&params.get('module')==='overlay'){document.getElementById('scoreboardWidget').hidden=true;document.getElementById('ladderWaiting').hidden=true;}
@@ -30,12 +30,13 @@
     if(dailyPreview){for(const id of ['ladderHUD','scoreboardWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;}
     else if(preview&&params.get('module')&&!['waiting','loading','break','scene','editor'].includes(params.get('module')))document.getElementById('dailyWidget').hidden=true;
     document.getElementById('breakScreen').hidden=true;
+    if(preview&&params.get('module')&&!['waiting','scene','editor','outfit'].includes(params.get('module'))){const timer=document.getElementById('waitingTimerWidget');if(timer)timer.hidden=true;}
     if(preview&&params.get('module')&&!['outfit','scene','editor'].includes(params.get('module')))document.getElementById('resourceWidget').hidden=true;
     if((preview&&params.get('module')&&!['editor','sticker','scene'].includes(params.get('module'))))document.getElementById('stickerWidget').hidden=true;
     if(preview&&params.get('module')&&!['goals','waiting','loading','break','scene','editor'].includes(params.get('module')))document.getElementById('goalsWidget').hidden=true;
     if(preview&&params.get('module')==='goals'){for(const id of ['ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome','resourceWidget','stickerWidget'])document.getElementById(id).hidden=true;document.getElementById('previewGround').style.display='none';resize();}
-    if(standaloneSticker)for(const id of ['goalsWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
-    if(state.scene==='blank'&&!(preview&&params.get('module')==='goals'))for(const id of ['goalsWidget','stickerWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
+    if(standaloneSticker)for(const id of ['waitingTimerWidget','goalsWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
+    if(state.scene==='blank'&&!(preview&&params.get('module')==='goals'))for(const id of ['waitingTimerWidget','goalsWidget','stickerWidget','resourceWidget','ladderWaiting','ladderHUD','scoreboardWidget','dailyWidget','gameFrame','catWidget','liveGift','liveRaffle','liveIncome'])document.getElementById(id).hidden=true;
   }
   if(preview&&['waiting','loading','break'].includes(params.get('module')))addEventListener('message',event=>{
     if(event.origin!==location.origin||event.source!==parent||event.data?.type!=='waitingDraft')return;

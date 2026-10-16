@@ -12,5 +12,5 @@
     "node": ">=24"
   },
   "license": "MIT",
-  "build": "20261016-hud-editor"
+  "build": "20261016-waiting-timer"
 }

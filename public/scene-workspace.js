@@ -1,19 +1,20 @@
 (()=>{
   const $=id=>document.getElementById(id),suffixes=['Theme','Background','BackgroundImage','BackgroundVideo','VideoMuted','VideoLoop','ShowText','TeamName','Title','Note','Kicker','Color','ColorSecondary','Accent','TextColor','Layout','ImageFit','Dim','PanelOpacity','Width','TitleSize','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest','ShowZerglings','ShowZealots','ShowWorkersKilled','ShowMostWorkersKilled','ShowStrongest','ShowDailyTime'],numbers=new Set(['Dim','PanelOpacity','Width','TitleSize']);
+  const timerFields=['waitingShowTimer','waitingTimerTitle','waitingTimerX','waitingTimerY','waitingTimerWidth','waitingTimerOpacity'],fieldNames=p=>p==='waiting'?[...suffixes.map(s=>p+s),...timerFields]:suffixes.map(s=>p+s);
   let state,connected=false;
   const editors={waiting:{dirty:false,uploading:false,label:'等待'},break:{dirty:false,uploading:false,label:'暂离'}};
-  const config=p=>Object.fromEntries(suffixes.map(s=>{const e=$(p+s);return[p+s,e.type==='checkbox'?e.checked:numbers.has(s)?Number(e.value):e.value];}));
+  const config=p=>Object.fromEntries(fieldNames(p).map(key=>{const e=$(key);return[key,e.type==='checkbox'?e.checked:e.type==='number'||numbers.has(key.slice(p.length))?Number(e.value):e.value];}));
   function update(p){const e=editors[p],mode=$(p+'Background').value;
     $(p+'MediaSettings').hidden=!['image','video'].includes(mode);$(p+'VideoSettings').hidden=mode!=='video';$(p+'SecondaryField').hidden=mode!=='gradient';
     $(p+'TeamName').closest('label').hidden=$(p+'Theme').value!=='team';
     $(p+'DraftStatus').textContent=e.uploading?'正在保存素材…':e.dirty?'预览草稿 · 尚未应用':'已保存';
     $(p+'Apply').disabled=!connected||!state||e.uploading;$(p+'MediaFile').disabled=!connected||!state||e.uploading;$(p+'ClearMedia').disabled=!state||e.uploading;$(p+'Discard').disabled=!state||e.uploading;
-    for(const s of suffixes)$(p+s).disabled=!state;
+    for(const key of fieldNames(p))$(key).disabled=!state;
     for(const b of document.querySelectorAll(`[data-scene-prefix="${p}"]`)){b.disabled=!state;b.setAttribute('aria-pressed',String(b.dataset.sceneTheme===$(p+'Theme').value));}
     for(const b of document.querySelectorAll(`[data-content-prefix="${p}"]`))b.disabled=!state;
     if(state)$(p+'Preview').contentWindow?.postMessage({type:'waitingDraft',config:config(p)},location.origin);
   }
-  function fill(p){if(!state)return;for(const s of suffixes){const e=$(p+s),value=state.ladder.config[p+s];if(e.type==='checkbox')e.checked=value===true;else e.value=value??'';}const c=config(p);$(p+'MediaStatus').textContent=c[p+'BackgroundVideo']||c[p+'BackgroundImage']?'素材已保存在本机':'尚未选择素材';}
+  function fill(p){if(!state)return;for(const key of fieldNames(p)){const e=$(key),value=state.ladder.config[key];if(e.type==='checkbox')e.checked=value===true;else e.value=value??'';}const c=config(p);$(p+'MediaStatus').textContent=c[p+'BackgroundVideo']||c[p+'BackgroundImage']?'素材已保存在本机':'尚未选择素材';}
   function changed(p){editors[p].dirty=true;update(p);}
   async function perform(p,fn){try{await fn();}catch(error){$(p+'MediaStatus').textContent=error.message;window.AssistantActions.toast(error.message);}finally{update(p);}}
   for(const [p,e]of Object.entries(editors)){
@@ -31,7 +32,7 @@
     }));
     for(const b of document.querySelectorAll(`[data-scene-prefix="${p}"]`))b.addEventListener('click',()=>{const theme=window.SceneThemes.presets[b.dataset.sceneTheme];$(p+'Theme').value=b.dataset.sceneTheme;if(b.dataset.sceneTheme==='custom')$(p+'AppearanceFold').open=true;for(const [s,v]of Object.entries(theme))if(s!=='name'&&$(p+s))$(p+s).value=v;if(b.dataset.sceneTheme!=='custom')$(p+'Background').value='gradient';if(p==='break')$(p+'Kicker').value=$(p+'Kicker').value.replace('LADDER SESSION','BE RIGHT BACK');changed(p);});
     $(p+'SourceURL').value=location.origin+(p==='waiting'?'/waiting-screen':'/away-screen');
-    for(const button of document.querySelectorAll(`[data-content-prefix="${p}"]`))button.addEventListener('click',()=>{const mode=button.dataset.sceneContent;for(const s of ['ShowText','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest'])$(p+s).checked=mode==='background'?false:s==='ShowHUD'?false:['ShowRecord','ShowMatchups','ShowLongest'].includes(s)?mode==='stats':true;changed(p);});
+    for(const button of document.querySelectorAll(`[data-content-prefix="${p}"]`))button.addEventListener('click',()=>{const mode=button.dataset.sceneContent;for(const s of ['ShowText','ShowName','ShowMMR','ShowRecord','ShowMatchups','ShowPhase','ShowHUD','ShowLongest'])$(p+s).checked=mode==='background'?false:s==='ShowHUD'?false:['ShowRecord','ShowMatchups','ShowLongest'].includes(s)?mode==='stats':true;if(p==='waiting')$('waitingShowTimer').checked=mode!=='background';changed(p);});
   }
   addEventListener('message',event=>{if(event.origin!==location.origin||event.data?.type!=='sceneMediaError')return;for(const p of Object.keys(editors))if(event.source===$(p+'Preview').contentWindow)$(p+'MediaStatus').textContent=event.data.message;});
   window.SceneWorkspace={render(next){state=next;for(const p of Object.keys(editors)){if(!editors[p].dirty&&!editors[p].uploading)fill(p);update(p);}},connection(value){connected=value;for(const p of Object.keys(editors))update(p);}};

@@ -104,6 +104,10 @@ test('HUD scene switches work independently of scene text and retain the saved p
  win.LadderOverlay.render({scene:'game',ladder:store.snapshot()});assert.equal(node('ladderHUD').hidden,true);
 });
 
+test('waiting timer can be selected and laid out without changing its live start time or the active scene',async()=>{
+ const e=editor();e.scene('intermission');const source=e.get('sceneEditorPreview').contentWindow,send=data=>e.events.message({source,origin:'http://localhost',data});send({type:'editorSelected',target:'timer'});assert.equal(e.get('sceneDragTarget').value,'timer');send({type:'editorMoved',config:{waitingTimerX:900,waitingTimerY:240,waitingTimerWidth:420,sceneEnteredAt:0}});e.change('waitingTimerTitle','等待下一局');e.change('waitingTimerOpacity',0);await e.submit();const saved=e.calls.at(-1).config;assert.equal(saved.waitingTimerX,900);assert.equal(saved.waitingTimerWidth,420);assert.equal(saved.waitingTimerTitle,'等待下一局');assert.equal(saved.waitingTimerOpacity,0);assert.equal(saved.sceneEnteredAt,undefined);assert.equal(e.state.scene,'game');
+});
+
 test('Preview keyboard movement honors scale, bounds, hidden elements and origin', () => {
   const events = {}, handlers = {}, messages = [], parent = {postMessage(message) {messages.push(message);}}, handle = {style: {}, append() {}, setAttribute() {}, addEventListener(type, fn) {handlers[type] = fn;}};
   const widget = {hidden: false, closest() {return null;}, getBoundingClientRect() {return {left: 500, top: 80, width: 100, height: 60};}};
