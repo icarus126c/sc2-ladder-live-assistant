@@ -75,6 +75,35 @@ test('one drag is one undo step; redo restores it, a new edit clears redo, and p
  e.click('sceneEditUndo');send({type:'editorMoved',gesture:'two',config:{goalsX:70,goalsWidth:500}});assert.equal(e.get('sceneEditRedo').disabled,true);assert.equal(e.preview().config.goalsWidth,500);
 });
 
+test('HUD can be selected, moved, resized, undone and saved without changing account or the live scene',async()=>{
+ const e=editor();e.scene('custom');const source=e.get('sceneEditorPreview').contentWindow,send=data=>e.events.message({source,origin:'http://localhost',data});
+ e.change('customShowHUD',true);send({type:'editorSelected',target:'hud'});assert.equal(e.get('sceneDragTarget').value,'hud');assert.equal(e.get('sceneEdit-x').value,32);assert.equal(e.get('sceneEdit-width').value,560);
+ send({type:'editorMoved',gesture:'hud-drag',config:{x:180,y:270,width:640,names:['intruder'],mmr:9999}});assert.equal(e.preview().config.x,180);assert.equal(e.preview().config.width,640);assert.equal(e.get('sceneEdit-y').value,270);
+ e.click('sceneEditUndo');assert.equal(e.preview().config.x,32);e.click('sceneEditRedo');assert.equal(e.preview().config.x,180);
+ e.change('scale',125);e.change('opacity',70);await e.submit();const saved=e.calls.at(-1).config;assert.equal(saved.customShowHUD,true);assert.equal(saved.showHUD,true);assert.equal(saved.width,640);assert.equal(saved.scale,125);assert.equal(saved.opacity,70);assert.equal(saved.names,undefined);assert.equal(saved.mmr,undefined);assert.equal(e.state.scene,'game');
+});
+
+test('HUD drag respects actual widget scaling, keyboard boundaries and blank/game scene restrictions',()=>{
+ const events={},handlers={},messages=[],parent={postMessage:m=>messages.push(m)},handle={style:{},append(){},setAttribute(){},setPointerCapture(){},focus(){},addEventListener(k,fn){handlers[k]=fn;}};
+ const widget={hidden:false,style:{},closest(){return null;},getBoundingClientRect(){return{left:50,top:40,width:300,height:150};}},canvas={getBoundingClientRect(){return{left:0,top:0,width:960};}};
+ const state={scene:'custom',ladder:{config:{x:100,y:80,width:400,scale:150}}};
+ const grip={style:{},setAttribute(){} };let created=0;
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/scene-editor-preview.js'),'utf8'),{URLSearchParams,location:{search:'?preview=1&module=editor',origin:'http://localhost'},window:{SceneCustomization:M,SceneEditorPreviewState:state},parent,document:{createElement:()=>created++?grip:handle,body:{append(){}},getElementById:id=>id==='canvas'?canvas:widget},addEventListener:(k,fn)=>events[k]=fn,setInterval(){}});
+ events.message({source:parent,origin:'http://localhost',data:{type:'editorDragTarget',target:'hud'}});assert.equal(handle.hidden,false);assert.equal(widget.style.pointerEvents,'auto');handlers.keydown({key:'ArrowRight',shiftKey:true,preventDefault(){}});assert.equal(messages.at(-1).config.x,110);
+ handlers.pointerdown({button:0,target:handle,pointerId:1,clientX:0,clientY:0,preventDefault(){}});handlers.pointermove({clientX:20,clientY:15});assert.equal(messages.at(-1).config.x,140);assert.equal(messages.at(-1).config.y,110);handlers.pointerup();
+ handlers.pointerdown({button:0,target:grip,pointerId:1,clientX:0,clientY:0,preventDefault(){}});handlers.pointermove({clientX:30,clientY:0});assert.equal(messages.at(-1).config.width,440);handlers.pointerup();
+ state.ladder.config.x=1899;handlers.keydown({key:'ArrowRight',shiftKey:true,preventDefault(){}});assert.equal(messages.at(-1).config.x,1900);state.scene='game';events.message({source:parent,origin:'http://localhost',data:{type:'editorDragTarget',target:'hud'}});assert.equal(handle.hidden,true);state.scene='blank';events.message({source:parent,origin:'http://localhost',data:{type:'editorDragTarget',target:'hud'}});assert.equal(handle.hidden,true);
+});
+
+test('HUD scene switches work independently of scene text and retain the saved position',()=>{
+ const nodes=new Map(),node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:false,textContent:'',style:{setProperty(){}},getAttribute(){return '';},parentElement:{},replaceChildren(){},append(){}});return nodes.get(id);},win={SceneThemes:require('../public/scene-themes.js')},store=createReplayStore();
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/ladder-overlay.js'),'utf8'),{window:win,document:{getElementById:node}});
+ for(const [scene,prefix]of [['intermission','waiting'],['loading','loading'],['break','break'],['custom','custom']]){
+  store.configure({showHUD:true,[prefix+'ShowHUD']:true,[prefix+'ShowText']:false,x:210,y:330,width:620,scale:125});const state={scene,ladder:store.snapshot()};win.LadderOverlay.render(state);assert.equal(node('ladderHUD').hidden,false,scene);assert.equal(node('ladderHUD').style.left,'210px');assert.equal(node('ladderHUD').style.top,'330px');assert.equal(node('ladderHUD').style.width,'620px');assert.equal(node('ladderHUD').style.transform,'scale(1.25)');state.ladder.config[prefix+'ShowHUD']=false;win.LadderOverlay.render(state);assert.equal(node('ladderHUD').hidden,true);
+ }
+ win.LadderOverlay.render({scene:'game',ladder:store.snapshot()});assert.equal(node('ladderHUD').hidden,true);
+});
+
 test('Preview keyboard movement honors scale, bounds, hidden elements and origin', () => {
   const events = {}, handlers = {}, messages = [], parent = {postMessage(message) {messages.push(message);}}, handle = {style: {}, append() {}, setAttribute() {}, addEventListener(type, fn) {handlers[type] = fn;}};
   const widget = {hidden: false, closest() {return null;}, getBoundingClientRect() {return {left: 500, top: 80, width: 100, height: 60};}};

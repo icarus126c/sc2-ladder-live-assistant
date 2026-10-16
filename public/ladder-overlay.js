@@ -4,9 +4,10 @@
     const l=next.ladder, hud=$('ladderHUD'),waiting=$('ladderWaiting');
     if(!hud||!waiting)return false;
     const enabled=!!l?.config.enabled,c=window.SceneThemes?.resolve(l?.config,next.scene)||l?.config,s={...l?.stats,...l?.session?.stats};
-    const hudScene=next.scene==='custom'?'custom':typeof c?.scoreboardEnabled==='boolean'?'intermission':'game';
-    hud.hidden=!enabled||!c.showHUD||next.scene!==hudScene;
-    if(c?.waitingShowHUD===false||(next.scene!=='custom'&&c?.waitingShowText===false))hud.hidden=true;
+    const hudScene=typeof c?.scoreboardEnabled==='boolean'?['intermission','loading','break','custom'].includes(next.scene):next.scene==='game';
+    hud.hidden=!enabled||!c.showHUD||!hudScene;
+    const hudPrefix={intermission:'waiting',loading:'loading',break:'break',custom:'custom'}[next.scene];
+    if((hudPrefix?l.config[hudPrefix+'ShowHUD']:c?.waitingShowHUD)===false)hud.hidden=true;
     waiting.hidden=!enabled||!['intermission','loading','break','custom'].includes(next.scene);
     window.SceneVideo?.render(c,waiting.hidden);
     if(!enabled)return false;

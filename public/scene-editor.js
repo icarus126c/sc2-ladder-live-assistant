@@ -3,9 +3,9 @@
   if(!frame)return;
   const names={game:'游戏画面',loading:'比赛载入画面',intermission:'搜索 / 等待画面',break:'暂离画面',blank:'空白场景',custom:'自定义场景'};
   const descriptions={game:'保留游戏画面，搭配边框、计分器与小助手。',loading:'下一场开始前，展示标题与本次直播战报。',intermission:'搜索对手时，用背景、文字和战报填满等待时间。',break:'暂时离开时，告诉观众何时回来。',blank:'隐藏所有助手图层，露出直播软件下方的原始画面。',custom:'为节目、活动或自由组合准备一个独立场景。'};
-  const content={ShowName:'昵称与种族',ShowMMR:'当前 MMR',ShowRecord:'本次直播胜负',ShowMatchups:'对阵种族',ShowPhase:'游戏状态',ShowHUD:'信息栏',ShowLongest:'今日最长对局',ShowZealots:'今日刷叉',ShowZerglings:'今日造狗',ShowWorkersKilled:'击杀对方农民',ShowMostWorkersKilled:'单盘最高击杀农民',ShowStrongest:'今日最强对手',ShowDailyTime:'今日对局时长'};
-  const layerMeta={Goals:['标','今日挑战与进度'],Frame:['边','装饰游戏边沿'],Keyboard:['键','展示按键与角色'],Scoreboard:['胜','本次直播的胜负'],DailyWidget:['今','今日对局与单位统计'],Resources:['矿','矿物、瓦斯与人口图标'],Gifts:['礼','直播间礼物答谢'],Income:['收','直播间收益信息'],Raffle:['奖','直播间抽奖进度'],Sticker:['贴','自由摆放的图片挂件']};
-  const dragTargets={Goals:'goals',Keyboard:'keyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Text:'text',Sticker:'sticker'};
+  const content={ShowName:'昵称与种族',ShowMMR:'当前 MMR',ShowRecord:'本次直播胜负',ShowMatchups:'对阵种族',ShowPhase:'游戏状态',ShowLongest:'今日最长对局',ShowZealots:'今日刷叉',ShowZerglings:'今日造狗',ShowWorkersKilled:'击杀对方农民',ShowMostWorkersKilled:'单盘最高击杀农民',ShowStrongest:'今日最强对手',ShowDailyTime:'今日对局时长'};
+  const layerMeta={HUD:['信','今日冲分、昵称与 MMR'],Goals:['标','今日挑战与进度'],Frame:['边','装饰游戏边沿'],Keyboard:['键','展示按键与角色'],Scoreboard:['胜','本次直播的胜负'],DailyWidget:['今','今日对局与单位统计'],Resources:['矿','矿物、瓦斯与人口图标'],Gifts:['礼','直播间礼物答谢'],Income:['收','直播间收益信息'],Raffle:['奖','直播间抽奖进度'],Sticker:['贴','自由摆放的图片挂件']};
+  const dragTargets={HUD:'hud',Goals:'goals',Keyboard:'keyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Text:'text',Sticker:'sticker'};
   let state,connected=false,phase='game',draft={},dirty=false,uploading=false,saving=false,lastConfig='',selected='Scoreboard',pendingScene='',controls=[],cards=[],buttons=[],visibilityNote=null;
   let undoStack=[],redoStack=[],moveGesture='';
   function remember(){undoStack.push({...draft});if(undoStack.length>80)undoStack.shift();redoStack=[];}
@@ -20,6 +20,7 @@
     for(const [suffix,max]of Object.entries({Title:60,Note:100,Kicker:80,TeamName:40}))if(key.endsWith(suffix))el.maxLength=max;
     if(/Opacity$/.test(key)||key==='opacity'){el.min=['scoreboardOpacity','scoreboardPanelOpacity','stickerOpacity','opacity'].includes(key)||/^(waiting|loading|break|custom)PanelOpacity$/.test(key)?0:20;el.max=100;el.step=1;}
     const c=values();if(type==='checkbox')el.checked=isVisible(key,c);else el.value=c[key]??'';
+    const hudBounds={x:[0,1900],y:[0,1060],width:[320,1000],scale:[50,150],fontSize:[14,48]};if(hudBounds[key]){[el.min,el.max]=hudBounds[key];el.step=1;}
     if(key==='stickerX'||key==='stickerY'){el.min=0;el.max=key==='stickerX'?1919:1079;}if(key==='stickerWidth'||key==='stickerHeight'){el.min=40;el.max=1000;}el.disabled=!state||busy();wrap.append(el);controls.push(el);return wrap;
   }
   function isVisible(key,c=values()){
@@ -54,14 +55,14 @@
     hint(visibility,'开关决定是否显示；点卡片名称，调整这个组件。');
     const grid=node('div',null,'scene-content-grid');
     if(phase!=='game')grid.append(contentCard('Text','场景文字与战报'));
-    for(const [layer,label]of Object.entries(M.layers))grid.append(contentCard(layer,label));
+    for(const [layer,label]of Object.entries(M.layers))if(layer!=='HUD'||phase!=='game')grid.append(contentCard(layer,label));
     visibility.append(grid);hint(visibility,'显示开关仅作用于当前场景。启用组件会同时开启对应工具；礼物、收益、抽奖还需开启直播间互动。');box.append(visibility);
     if(phase!=='game')buildBackground(box,prefix);
     buildInspector(box,prefix);
     const advanced=section('高级设置 · 全部位置与透明度',true);
     hint(advanced,'以下工具参数在各场景共用；保存后，其他使用同一工具的场景也会更新。');
     pair(advanced,[['scoreboardPanelOpacity','计分器底色与边框 %','number'],['scoreboardOpacity','计分器整体 %','number'],['gameFrameOpacity','游戏边框 %','number'],['catOpacity','按键助手整体 %','number'],['dailyOpacity','今日数据底色 %','number'],['opacity','信息栏整体 %','number'],['resourceOpacity','资源图标整体 %','number']].filter(([key])=>!field(key)));
-    pair(advanced,[['catX','键盘横向位置','number'],['catY','键盘纵向位置','number'],['catWidth','键盘宽度','number'],['scoreboardX','计分器横向位置','number'],['scoreboardY','计分器纵向位置','number'],['scoreboardWidth','计分器宽度','number'],['dailyX','今日数据横向位置','number'],['dailyY','今日数据纵向位置','number'],['dailyWidth','今日数据宽度','number']].filter(([key])=>!field(key)));
+    pair(advanced,[['x','信息栏横向位置','number'],['y','信息栏纵向位置','number'],['width','信息栏宽度','number'],['scale','信息栏缩放 %','number'],['catX','键盘横向位置','number'],['catY','键盘纵向位置','number'],['catWidth','键盘宽度','number'],['scoreboardX','计分器横向位置','number'],['scoreboardY','计分器纵向位置','number'],['scoreboardWidth','计分器宽度','number'],['dailyX','今日数据横向位置','number'],['dailyY','今日数据纵向位置','number'],['dailyWidth','今日数据宽度','number']].filter(([key])=>!field(key)));
     box.append(advanced);$('sceneDragTarget').value=dragTargets[selected]||'';sync();
   }
   function buildBackground(box,prefix){
@@ -85,6 +86,9 @@
       for(const [key,label]of [['Title','标题'],['Note','说明']])panel.append(input(prefix+key,label));
       const more=section('更多文字与战报',true);for(const [key,label]of [['Kicker','顶部小字'],['TeamName','战队名称']])more.append(input(prefix+key,label));checks(more,Object.entries(content).map(([key,label])=>[prefix+key,label]));panel.append(more);
       const layout=section('文字对齐、字号与位置',true);layout.append(input(prefix+'Layout','对齐方式','text',{left:'左侧',center:'居中',right:'右侧'}));checks(layout,[[prefix+'FreePosition','使用自由位置（可拖动）']]);pair(layout,[[prefix+'TextX','横向位置','number'],[prefix+'TextY','纵向位置','number'],[prefix+'Width','内容宽度','number'],[prefix+'TitleSize','标题字号','number']]);panel.append(layout);
+    }else if(selected==='HUD'){
+      pair(panel,[['x','横向位置','number'],['y','纵向位置','number'],['width','宽度','number'],['scale','缩放 %','number'],['opacity','不透明度 %','number'],['fontSize','字号','number'],['accent','强调色','color']]);
+      hint(panel,'这是显示“今日冲分”、昵称和 MMR 的独立卡片。关闭场景文字不会隐藏它；信息栏在游戏中自动隐藏。');
     }else if(selected==='Scoreboard')pair(panel,[['scoreboardX','横向位置','number'],['scoreboardY','纵向位置','number'],['scoreboardWidth','宽度','number'],['scoreboardPanelOpacity','底色与边框 %','number'],['scoreboardOpacity','整体透明度 %','number']]);
     else if(selected==='Goals')pair(panel,[['goalsX','横向位置','number'],['goalsY','纵向位置','number'],['goalsWidth','宽度','number'],['goalsOpacity','底色不透明度 %','number']]);
     else if(selected==='DailyWidget')pair(panel,[['dailyX','横向位置','number'],['dailyY','纵向位置','number'],['dailyWidth','宽度','number'],['dailyOpacity','底色透明度 %','number']]);
@@ -100,7 +104,7 @@
       if(values().stickerImage)options.custom='自己的图片';panel.append(input('stickerStyle','挂件角色','text',options));
       pair(panel,[['stickerX','横向位置','number'],['stickerY','纵向位置','number'],['stickerWidth','宽度','number'],['stickerHeight','高度','number'],['stickerOpacity','整体透明度 %','number']]);checks(panel,[['stickerFlip','水平翻转'],['stickerProtect','避让游戏信息区']]);hint(panel,'游戏中自动避开小地图、血量、技能和资源数字，让关键信息保持清晰。');hint(panel,'上传自己的图片，请打开下方完整设置。');
     }else hint(panel,'在直播间互动中配置内容、连接状态与触发方式。');
-    const routes={Goals:'goals',Frame:'gameframe',Keyboard:'catkeyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Resources:'resources',Gifts:'liveinteraction',Income:'liveinteraction',Raffle:'liveinteraction',Sticker:'stickers'};
+    const routes={HUD:'overlay',Goals:'goals',Frame:'gameframe',Keyboard:'catkeyboard',Scoreboard:'scoreboard',DailyWidget:'daily',Resources:'resources',Gifts:'liveinteraction',Income:'liveinteraction',Raffle:'liveinteraction',Sticker:'stickers'};
     if(routes[selected]){const link=node('a','打开完整设置 ↗','quiet-link');link.href='#'+routes[selected];panel.append(link);}box.append(panel);
   }
   function sync(){
@@ -112,7 +116,7 @@
     if(!state)return;
     const c=values(),prefix=M.prefixes[phase];
     if(visibilityNote)visibilityNote.hidden=isVisible(prefix+'Show'+selected,c);
-    for(const option of $('sceneDragTarget').options||[])if(option.value==='text')option.disabled=phase==='game';
+    for(const option of $('sceneDragTarget').options||[])if(['text','hud'].includes(option.value))option.disabled=phase==='game';
     if(backgroundSection){backgroundSection._media.hidden=!['image','video'].includes(c[prefix+'Background']);backgroundSection._video.hidden=c[prefix+'Background']!=='video';}
     frame.contentWindow?.postMessage({type:'editorGuides',show:$('sceneEditorGuides')?.checked===true},location.origin);
     frame.contentWindow?.postMessage({type:'editorDraft',phase,config:M.filter(c,phase)},location.origin);
@@ -152,12 +156,12 @@
   $('sceneSwitchDiscard').addEventListener('click',()=>{if(busy())return;const next=pendingScene;draft={};dirty=false;undoStack=[];redoStack=[];selectScene(next);});$('sceneSwitchCancel').addEventListener('click',()=>{pendingScene='';sync();});
   for(const b of document.querySelectorAll('[data-edit-scene]'))b.addEventListener('click',()=>selectScene(b.dataset.editScene));
   for(const link of document.querySelectorAll('[data-open-editor-scene]'))if(link.dataset.openEditorScene)link.addEventListener('click',event=>{if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();selectScene(link.dataset.openEditorScene);location.hash='#scenes';});
-  $('sceneDragTarget').addEventListener('change',()=>{const target=$('sceneDragTarget').value,layer=Object.keys(dragTargets).find(key=>dragTargets[key]===target);if(layer&&!(layer==='Text'&&phase==='game'))chooseLayer(layer);else sync();});frame.addEventListener('load',sync);$('sceneEditorGuides')?.addEventListener('change',sync);
+  $('sceneDragTarget').addEventListener('change',()=>{const target=$('sceneDragTarget').value,layer=Object.keys(dragTargets).find(key=>dragTargets[key]===target);if(layer&&!(['Text','HUD'].includes(layer)&&phase==='game'))chooseLayer(layer);else sync();});frame.addEventListener('load',sync);$('sceneEditorGuides')?.addEventListener('change',sync);
   addEventListener('message',event=>{
     if(event.origin!==location.origin||event.source!==frame.contentWindow||busy())return;
-    if(event.data?.type==='editorSelected'){const layer=Object.keys(dragTargets).find(k=>dragTargets[k]===event.data.target);if(layer&&!(layer==='Text'&&phase==='game'))chooseLayer(layer);return;}
+    if(event.data?.type==='editorSelected'){const layer=Object.keys(dragTargets).find(k=>dragTargets[k]===event.data.target);if(layer&&!(['Text','HUD'].includes(layer)&&phase==='game'))chooseLayer(layer);return;}
     if(event.data?.type!=='editorMoved')return;const patch=M.filter(event.data.config,phase);let moved=false;const gesture=typeof event.data.gesture==='string'?event.data.gesture.slice(0,64):'';
-    for(const [key,value]of Object.entries(patch)){if(!/^(?:cat[XY]|scoreboard[XY]|daily[XY]|goals[XY]|sticker[XY]|catWidth|scoreboardWidth|dailyWidth|goalsWidth|stickerWidth|stickerHeight|(?:waiting|break|loading|custom)(?:Text[XY]|FreePosition))$/.test(key))continue;if(values()[key]===value)continue;if(!moved&&(!gesture||gesture!==moveGesture))remember();draft[key]=value;moved=true;if(field(key)){if(field(key).type==='checkbox')field(key).checked=value;else field(key).value=value;}}
+    for(const [key,value]of Object.entries(patch)){if(!/^(?:[xy]|width|cat[XY]|scoreboard[XY]|daily[XY]|goals[XY]|sticker[XY]|catWidth|scoreboardWidth|dailyWidth|goalsWidth|stickerWidth|stickerHeight|(?:waiting|break|loading|custom)(?:Text[XY]|FreePosition))$/.test(key))continue;if(values()[key]===value)continue;if(!moved&&(!gesture||gesture!==moveGesture))remember();draft[key]=value;moved=true;if(field(key)){if(field(key).type==='checkbox')field(key).checked=value;else field(key).value=value;}}
     if(moved){dirty=true;moveGesture=gesture;sync();}
   });
   $('sceneEditUndo').addEventListener('click',()=>history(true));$('sceneEditRedo').addEventListener('click',()=>history(false));
